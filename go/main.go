@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -19,7 +20,7 @@ var U = Unit{}
 
 func main() {
 	t0 := time.Now()
-	res, err := run("../../../../", parallel, page)
+	res, err := run("gen/gen_data/", parallel, page)
 	t1 := time.Now()
 	if err != nil {
 		panic(err)
@@ -141,4 +142,5 @@ func Query(key string) ([]string, []string, string, bool, error) {
 		}
 	}
 	return dirs, files, last, count >= page, nil
+	
 }
