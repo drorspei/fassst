@@ -21,7 +21,8 @@ func main() {
 
 	// Get the first page of results for ListObjectsV2 for a bucket
 	output, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
-		Bucket: aws.String("my-bucket"),
+		Bucket:    aws.String("?"),
+		Delimiter: aws.String(("/")),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -30,5 +31,8 @@ func main() {
 	log.Println("first page results:")
 	for _, object := range output.Contents {
 		log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
+	}
+	for _, object := range output.CommonPrefixes {
+		log.Printf("subdir=%s", aws.ToString(object.Prefix))
 	}
 }
