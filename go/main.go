@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"os"
 	"strings"
@@ -45,9 +46,12 @@ type FileSystem interface {
 }
 
 type MockKTreeFS struct {
-	Depth    uint64
-	Degree   uint64
-	PageSize uint64
+	Depth                uint64
+	Degree               uint64
+	PageSize             uint64
+	MaxCallsPerSecond    uint64
+	RecentMockCalls      *[]time.Time
+	RecentMockCallsMutex *sync.Mutex
 }
 
 type MockKTreePagination struct {
@@ -62,7 +66,34 @@ func Min(x, y uint64) uint64 {
 	return y
 }
 
+func (fs MockKTreeFS) AddRecentMockCall(time time.Time) bool {
+	fs.RecentMockCallsMutex.Lock()
+	defer fs.RecentMockCallsMutex.Unlock()
+
+	i := 0
+	for i < len(*fs.RecentMockCalls) && time.Sub((*fs.RecentMockCalls)[i]).Seconds() >= 1 {
+		i++
+	}
+
+	if i > 0 {
+		*fs.RecentMockCalls = (*fs.RecentMockCalls)[i:]
+		// global_recent_mock_calls = global_recent_mock_calls[i:]
+	}
+
+	if uint64(len(*fs.RecentMockCalls)) < fs.MaxCallsPerSecond {
+		// global_recent_mock_calls = append(global_recent_mock_calls, time)
+		*fs.RecentMockCalls = append(*fs.RecentMockCalls, time)
+		return true
+	}
+
+	return false
+}
+
 func (fs MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
+	if !fs.AddRecentMockCall(time.Now()) {
+		return nil, nil, nil, fmt.Errorf("too fast; Error Code: SlowDown")
+	}
+
 	var dirs []DirEntry
 	var files []FileEntry
 	var start uint64 = 0
@@ -236,6 +267,9 @@ func (fs S3FS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEnt
 	}
 }
 
+var global_recent_mock_calls []time.Time
+var global_recent_mock_calls_mutex sync.Mutex
+
 func FileSystemByUrl(url string) (string, FileSystem, error) {
 	if strings.HasPrefix(url, "s3://") {
 		fs, err := NewS3FS(context.Background())
@@ -246,21 +280,25 @@ func FileSystemByUrl(url string) (string, FileSystem, error) {
 		url = url[len("mock://"):]
 		parts := strings.Split(url, "@")
 		if len(parts) < 2 {
-			return "", nil, fmt.Errorf("mock fs requires depth, degree and page size like mock://5:5:2@url")
+			return "", nil, fmt.Errorf("mock fs requires depth, degree, page size and max calls per second like mock://5:5:2:1@url")
 		}
 		subparts := strings.Split(parts[0], ":")
-		if len(subparts) != 3 {
-			return "", nil, fmt.Errorf("mock fs requires depth, degree and page size like mock://5:5:2@url")
+		if len(subparts) != 4 {
+			return "", nil, fmt.Errorf("mock fs requires depth, degree, page size and max calls per second like mock://5:5:2:1@url")
 		}
 		depth, errdepth := strconv.ParseInt(subparts[0], 10, 0)
 		degree, errdegree := strconv.ParseInt(subparts[1], 10, 0)
 		pagesize, errpagesize := strconv.ParseInt(subparts[2], 10, 0)
+		maxcallspersecond, errpagesize := strconv.ParseInt(subparts[3], 10, 0)
 
 		if errdepth != nil || errdegree != nil || errpagesize != nil {
-			return "", nil, fmt.Errorf("mock fs requires depth, degree and page size like mock://5:5:2@url")
+			return "", nil, fmt.Errorf("mock fs requires depth, degree, page size and max calls per second like mock://5:5:2:1@url")
 		}
 
-		return strings.Join(parts[1:], "/"), MockKTreeFS{uint64(depth), uint64(degree), uint64(pagesize)}, nil
+		return strings.Join(parts[1:], "/"), MockKTreeFS{
+			uint64(depth), uint64(degree), uint64(pagesize), uint64(maxcallspersecond),
+			&global_recent_mock_calls, &global_recent_mock_calls_mutex,
+		}, nil
 	}
 
 	return url, LocalFS{}, nil
