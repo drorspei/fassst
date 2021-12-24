@@ -77,11 +77,9 @@ func (fs MockKTreeFS) AddRecentMockCall(time time.Time) bool {
 
 	if i > 0 {
 		*fs.RecentMockCalls = (*fs.RecentMockCalls)[i:]
-		// global_recent_mock_calls = global_recent_mock_calls[i:]
 	}
 
 	if uint64(len(*fs.RecentMockCalls)) < fs.MaxCallsPerSecond {
-		// global_recent_mock_calls = append(global_recent_mock_calls, time)
 		*fs.RecentMockCalls = append(*fs.RecentMockCalls, time)
 		return true
 	}
