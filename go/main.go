@@ -246,7 +246,10 @@ func (fs S3FS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEnt
 	}
 
 	if pagination != nil {
-		var p S3Pagination = pagination.(S3Pagination)
+		p, ok := pagination.(S3Pagination)
+		if !ok {
+			return nil, nil, pagination, fmt.Errorf("wrong pagination")
+		}
 
 		output, err := fs.client.ListObjectsV2(fs.ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(bucket),
@@ -333,7 +336,7 @@ func main() {
 
 func run(fs FileSystem, startPath string, routines, pageSize int) ([]string, error) {
 	drainChan := make(chan string, routines*pageSize)
-	nameChan := make(chan string, routines)
+	nameChan := make(chan string, routines*2)
 	runChan := make(chan Unit, routines)
 	errChan := make(chan error)
 
@@ -344,18 +347,20 @@ func run(fs FileSystem, startPath string, routines, pageSize int) ([]string, err
 	nameChan <- uid
 	go foo(fs, startPath, uid, nil, runChan, nameChan, drainChan, errChan)
 
+	var done, eating bool
 	go func() {
+		var v string
 		for {
 			select {
-			case v := <-drainChan:
+			case v, eating = <-drainChan:
 				results = append(results, v)
+				eating = false
 			default:
 				time.Sleep(time.Millisecond)
 			}
 		}
 	}()
-	var stop bool
-	for !stop {
+	for !done || len(drainChan) > 0 || eating {
 		select {
 		case err := <-errChan:
 			return nil, err
@@ -366,14 +371,11 @@ func run(fs FileSystem, startPath string, routines, pageSize int) ([]string, err
 				nameMap[name] = U
 			}
 			if len(nameMap) == 0 {
-				stop = true
+				done = true
 			}
 		default:
 			time.Sleep(time.Millisecond)
 		}
-	}
-	for len(drainChan) > 0 {
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	return results, nil
