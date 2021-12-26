@@ -170,7 +170,7 @@ def zipcopy(source, destination, *, schedule, protocol="s3", name_field="Key", l
     
     for batch in batches[1:]:
         schedule(batch, destination, protocol=protocol, name_field=name_field, lastmodified_field=lastmodified_field, batch_size=batch_size, batch_size_mb=batch_size_mb, fsspec_kwargs=fsspec_kwargs, copy_nthreads=copy_nthreads, filter_func=filter_func)
-    zip_and_copy(batches[0], destination=destination, protocol=protocol, name_field=name_field, lastmodified_field=lastmodified_field)
+    return zip_and_copy(batches[0], destination=destination, protocol=protocol, name_field=name_field, lastmodified_field=lastmodified_field)
 
 
 def get_backend_func(args):
