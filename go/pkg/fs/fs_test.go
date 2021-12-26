@@ -52,6 +52,8 @@ func Test_fs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
+			mfs := fs.(ffs.MockKTreeFS)
+			mfs.CallDelayMilis = 100
 			results, err := ffs.List(fs, "/", tt.routines, 100)
 			if err != nil {
 				t.Fatalf("list mock fs: %v", err)
@@ -68,6 +70,8 @@ func Benchmark_fs(b *testing.B) {
 		b.Run(fmt.Sprint(r), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:100000@")
+				mfs := fs.(ffs.MockKTreeFS)
+				mfs.CallDelayMilis = 100
 				ffs.List(fs, "/", r, 100)
 			}
 		})

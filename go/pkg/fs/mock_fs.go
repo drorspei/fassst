@@ -15,6 +15,7 @@ type MockKTreeFS struct {
 	Degree               uint64
 	PageSize             uint64
 	MaxCallsPerSecond    uint64
+	CallDelayMilis       uint64
 	RecentMockCalls      *[]time.Time
 	RecentMockCallsMutex *sync.Mutex
 }
@@ -109,6 +110,8 @@ func (fs MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []
 	if start+fs.PageSize < fs.Degree {
 		return dirs, files, MockKTreePagination{depth, start + fs.PageSize}, nil
 	}
+
+	time.Sleep(time.Millisecond * time.Duration(fs.CallDelayMilis))
 
 	return dirs, files, nil, nil
 }

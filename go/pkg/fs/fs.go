@@ -59,7 +59,7 @@ func FileSystemByUrl(url string) (string, FileSystem, error) {
 		}
 
 		return strings.Join(parts[1:], "/"), MockKTreeFS{
-			uint64(depth), uint64(degree), uint64(pagesize), uint64(maxcallspersecond),
+			uint64(depth), uint64(degree), uint64(pagesize), uint64(maxcallspersecond), 0,
 			&global_recent_mock_calls, &global_recent_mock_calls_mutex,
 		}, nil
 	}

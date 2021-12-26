@@ -1,14 +1,14 @@
-package fs_v2_test
+package fs_v1_test
 
 import (
 	"fmt"
 	"testing"
 
 	ffs "fassst/pkg/fs"
-	ffs2 "fassst/pkg/fs/v2"
+	ffs1 "fassst/pkg/fs/v1"
 )
 
-func Test_fs_v2(t *testing.T) {
+func Test_fs_v1(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -55,7 +55,7 @@ func Test_fs_v2(t *testing.T) {
 			}
 			mfs := fs.(ffs.MockKTreeFS)
 			mfs.CallDelayMilis = 100
-			results, err := ffs2.List(fs, "/", tt.routines, 100)
+			results, err := ffs1.List(fs, "/", tt.routines, 100)
 			if err != nil {
 				t.Fatalf("list mock fs: %v", err)
 			}
@@ -66,14 +66,14 @@ func Test_fs_v2(t *testing.T) {
 	}
 }
 
-func Benchmark_fs_v2(b *testing.B) {
+func Benchmark_fs_v1(b *testing.B) {
 	for r := 10; r <= 1010; r += 100 {
 		b.Run(fmt.Sprint(r), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:100000@")
 				mfs := fs.(ffs.MockKTreeFS)
 				mfs.CallDelayMilis = 100
-				ffs2.List(fs, "/", r, 100)
+				ffs1.List(fs, "/", r, 100)
 			}
 		})
 	}
