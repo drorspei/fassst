@@ -107,7 +107,7 @@ def fsspec_dict_lastmodified(d, lastmodified_field=None, default=(1980, 1, 1, 0,
     return lastmodified
 
 
-def zip_and_copy(dicts, protocol, name_field, destination, lastmodified_field=None, format_="%Y%m%d_%H%M%S_{uuid}.zip", now=None, nthreads=None):
+def zip_and_copy(dicts, protocol, name_field, destination, lastmodified_field=None, format_="%Y%m%d_%H%M%S_{uuid}.zip", now=None, nthreads=1):
     from multiprocessing.dummy import Pool
     if not len(dicts):
         return
@@ -141,7 +141,7 @@ def zip_and_copy(dicts, protocol, name_field, destination, lastmodified_field=No
     return dicts
 
 
-def zipcopy(source, destination, *, schedule, protocol="s3", name_field="Key", lastmodified_field=None, fsspec_kwargs=None, batch_size=1000, batch_size_mb=200, copy_nthreads=None, filter_func=None):
+def zipcopy(source, destination, *, schedule, protocol="s3", name_field="Key", lastmodified_field=None, fsspec_kwargs=None, batch_size=1000, batch_size_mb=200, copy_nthreads=1, filter_func=None):
     if isinstance(source, list):
         return zip_and_copy(source, protocol, name_field, destination, lastmodified_field)
     
@@ -168,5 +168,103 @@ def zipcopy(source, destination, *, schedule, protocol="s3", name_field="Key", l
     dicts = [d for d in dicts if os.path.basename(d[name_field]) not in existing_keys]
     batches = to_batches(dicts, name_field=name_field, batch_size=batch_size, batch_size_mb=batch_size_mb)
     
-    for batch in batches:
+    for batch in batches[1:]:
         schedule(batch, destination, protocol=protocol, name_field=name_field, lastmodified_field=lastmodified_field, batch_size=batch_size, batch_size_mb=batch_size_mb, fsspec_kwargs=fsspec_kwargs, copy_nthreads=copy_nthreads, filter_func=filter_func)
+    zip_and_copy(batches[0], destination=destination, protocol=protocol, name_field=name_field, lastmodified_field=lastmodified_field)
+
+
+def get_backend_func(args):
+    if args.cps_backend == "dask":
+        def inner(func, *args_, **kwargs):
+            import json
+            from dask.distributed import Client, LocalCluster
+            from cpsish import dask_cpsish
+            print("starting localcluster")
+            with LocalCluster(**json.loads(args.cps_backend_kwargs)) as cluster:
+                print("starting client...")
+                with Client(cluster).as_current():
+                    print("calling...")
+                    return dask_cpsish(func, *args_, **kwargs)
+        return inner
+    else:
+        raise ValueError("cps backend must be dask")
+
+
+def prepare_zipcopy(args):
+    filter_func = None
+    if args.max_object_size > 0:
+        def filter_func(d):
+            return d['size'] < args.max_object_size * 1024**2
+
+    return {
+        "source": args.source,
+        "destination": args.destination,
+        "protocol": args.protocol,
+        "name_field": args.name_field,
+        "lastmodified_field": args.lastmodified_field,
+        "batch_size": args.batch_size,
+        "batch_size_mb": args.batch_size_mb,
+        "copy_nthreads": args.copy_nthreads,
+        "filter_func": filter_func
+    }
+
+
+def prepare_list(args):
+    return {
+        "path": args.path,
+        "protocol": args.protocol,
+        "name_field": args.name_field
+    }
+
+
+def printitems(it):
+    for err, items in it:
+        if err:
+            print("error:")
+            print(items)
+        elif items is not None:
+            for item in items:
+                print(item)
+
+
+def parser():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--inactivity-timeout", default=900, type=int, help="if no progress was made in this amount of time then raise an exception")
+    parser.add_argument("--cps-backend", default="dask")
+    parser.add_argument("--cps-backend-kwargs", default='{"processes": true}')
+
+    subparsers = parser.add_subparsers()
+
+    list_parser = subparsers.add_parser("list", help="recursively list all files")
+    list_parser.set_defaults(prepare_arguments=prepare_list, func=dolist)
+    list_parser.add_argument("--protocol", default="s3", help="protocol of source. must be an fsspec protocol")
+    list_parser.add_argument("--name-field", default="Key", help="key in dictionaries returned from fsspec listdir that reflects full path to object")
+    list_parser.add_argument("path")
+
+    zipcopy_parser = subparsers.add_parser("zipcopy", help="zip new files from destination and copy to destination, preserving prefixes")
+    zipcopy_parser.set_defaults(prepare_arguments=prepare_zipcopy, func=zipcopy)
+    zipcopy_parser.add_argument("--protocol", default="s3", help="protocol of source. must be an fsspec protocol")
+    zipcopy_parser.add_argument("--name-field", default="Key", help="key in dictionaries returned from fsspec listdir that reflects full path to object")
+    zipcopy_parser.add_argument("--lastmodified-field", default=None, help="key in dictionaries returned from fsspec listdir that reflects when object was last changed")
+    zipcopy_parser.add_argument("--batch-size", default=1000, type=int, help="maximum number of files in single zip")
+    zipcopy_parser.add_argument("--batch-size-mb", default=200, type=int, help="approximate maximum size of zip files")
+    zipcopy_parser.add_argument("--copy-nthreads", default=1, type=int, help="number of threads working when zip-copying a batch of files. currently 1 is recommended")
+    zipcopy_parser.add_argument("--max-object-size", default=200, type=int, help="only copy objects in sources that are less than this size in megabytes. any non-positive value will be considered as no bound")
+    zipcopy_parser.add_argument("source")
+    zipcopy_parser.add_argument("destination")
+
+    return parser
+
+
+def main(argv=None):
+    if argv is None:
+        import sys
+        argv = sys.argv[1:]
+    args = parser().parse_args(argv)
+    printitems(get_backend_func(args)(args.func, **args.prepare_arguments(args)))
+
+
+if __name__ == "__main__":
+    main()
