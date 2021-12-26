@@ -1,13 +1,14 @@
-package fs_test
+package fs_v2_test
 
 import (
 	"fmt"
 	"testing"
 
 	ffs "fassst/pkg/fs"
+	ffs2 "fassst/pkg/fs/v2"
 )
 
-func Test_fs(t *testing.T) {
+func Test_fs_v2(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -52,7 +53,7 @@ func Test_fs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
-			results, err := ffs.List(fs, "/", tt.routines, 100)
+			results, err := ffs2.List(fs, "/", tt.routines, 100)
 			if err != nil {
 				t.Fatalf("list mock fs: %v", err)
 			}
@@ -63,12 +64,12 @@ func Test_fs(t *testing.T) {
 	}
 }
 
-func Benchmark_fs(b *testing.B) {
+func Benchmark_fs_v2(b *testing.B) {
 	for r := 10; r <= 1010; r += 100 {
 		b.Run(fmt.Sprint(r), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:100000@")
-				ffs.List(fs, "/", r, 100)
+				ffs2.List(fs, "/", r, 100)
 			}
 		})
 	}
