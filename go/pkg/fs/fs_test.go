@@ -16,28 +16,28 @@ func Test_fs(t *testing.T) {
 		expected int
 	}{
 		{
-			pathFmt:  "mock://%d:%d:10:100000@",
+			pathFmt:  "mock://%d:%d:10:100@",
 			depth:    4,
 			degree:   4,
 			routines: 10,
 			expected: 4 * 4 * 4 * 4,
 		},
 		{
-			pathFmt:  "mock://%d:%d:10:100000@",
+			pathFmt:  "mock://%d:%d:10:100@",
 			depth:    5,
 			degree:   5,
 			routines: 10,
 			expected: 5 * 5 * 5 * 5 * 5,
 		},
 		{
-			pathFmt:  "mock://%d:%d:10:100000@",
+			pathFmt:  "mock://%d:%d:10:100@",
 			depth:    5,
 			degree:   6,
 			routines: 10,
 			expected: 6 * 6 * 6 * 6 * 6,
 		},
 		{
-			pathFmt:  "mock://%d:%d:10:100000@",
+			pathFmt:  "mock://%d:%d:10:100@",
 			depth:    6,
 			degree:   5,
 			routines: 10,
@@ -52,8 +52,7 @@ func Test_fs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
-			mfs := fs.(ffs.MockKTreeFS)
-			mfs.CallDelayMilis = 100
+
 			results, err := ffs.List(fs, "/", tt.routines, 100)
 			if err != nil {
 				t.Fatalf("list mock fs: %v", err)
@@ -70,8 +69,7 @@ func Benchmark_fs(b *testing.B) {
 		b.Run(fmt.Sprint(r), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:100000@")
-				mfs := fs.(ffs.MockKTreeFS)
-				mfs.CallDelayMilis = 100
+
 				ffs.List(fs, "/", r, 100)
 			}
 		})

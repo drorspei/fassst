@@ -1,85 +1,81 @@
 package fs
 
 import (
+	"strings"
+	"sync"
 	"time"
-
-	"github.com/google/uuid"
 
 	"fassst/pkg/utils"
 )
 
-func List(fs FileSystem, startPath string, routines, pageSize int) ([]string, error) {
-	drainChan := make(chan string, routines*pageSize)
-	nameChan := make(chan string, routines*2)
+func List(fs FileSystem, startPath string, routines, pageSize int, cont func(interface{})) ([]string, error) {
+	drainChan := make(chan []string, routines)
 	runChan := make(chan utils.Unit, routines)
 	errChan := make(chan error)
+	var runWG sync.WaitGroup
 
-	nameMap := make(map[string]utils.Unit, routines)
 	var results []string
 
-	uid := uuid.New().String()
-	nameChan <- uid
-	go lister(fs, startPath, uid, nil, runChan, nameChan, drainChan, errChan)
+	runWG.Add(1)
+	go lister(fs, startPath, nil, runChan, &runWG, drainChan, errChan)
 
-	var done, eating bool
+	var eating bool
 	go func() {
-		var v string
+		var v []string
 		for {
 			select {
+			case err := <-errChan:
+				panic(err)
 			case v, eating = <-drainChan:
-				results = append(results, v)
+				results = append(results, v...)
+				cont(v)
 				eating = false
 			default:
 				time.Sleep(time.Millisecond)
 			}
 		}
 	}()
-	for !done || len(drainChan) > 0 || eating {
-		select {
-		case err := <-errChan:
-			return nil, err
-		case name := <-nameChan:
-			if _, ok := nameMap[name]; ok {
-				delete(nameMap, name)
-			} else {
-				nameMap[name] = utils.U
-			}
-			if len(nameMap) == 0 {
-				done = true
-			}
-		default:
-			time.Sleep(time.Millisecond)
-		}
+	runWG.Wait()
+	for len(drainChan) > 0 || eating {
+		time.Sleep(time.Millisecond)
 	}
 
 	return results, nil
 }
 
-func lister(fs FileSystem, url, name string, pagination Pagination, runChan chan utils.Unit, nameChan, drainChan chan string, errChan chan error) {
+func lister(
+	fs FileSystem, url string, pagination Pagination,
+	runChan chan utils.Unit, runWG *sync.WaitGroup,
+	drainChan chan []string, errChan chan error,
+) {
 	runChan <- utils.U
 	defer func() { <-runChan }()
 
 	dirs, files, new_pagination, err := fs.ReadDir(url, pagination)
 	if err != nil {
+		if strings.Contains(err.Error(), "SlowDown") {
+			time.Sleep(time.Second)
+			go lister(fs, url, pagination, runChan, runWG, drainChan, errChan)
+			return
+		}
 		errChan <- err
 		return
 	}
 
 	if new_pagination != nil {
-		uid := uuid.New().String()
-		nameChan <- uid
-		go lister(fs, url, uid, new_pagination, runChan, nameChan, drainChan, errChan)
+		runWG.Add(1)
+		go lister(fs, url, new_pagination, runChan, runWG, drainChan, errChan)
 	}
 
 	for _, d := range dirs {
-		uid := uuid.New().String()
-		nameChan <- uid
-		go lister(fs, MakeSureHasSuffix(d.Name(), "/"), uid, nil, runChan, nameChan, drainChan, errChan)
+		runWG.Add(1)
+		go lister(fs, MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, drainChan, errChan)
 	}
 
-	for _, f := range files {
-		drainChan <- f.Name()
+	filenames := make([]string, len(files))
+	for i := 0; i < len(files); i++ {
+		filenames[i] = files[i].Name()
 	}
-
-	nameChan <- name
+	drainChan <- filenames
+	runWG.Done()
 }
