@@ -1,13 +1,14 @@
-package fs_test
+package fs_v2_test
 
 import (
 	"fmt"
 	"testing"
 
-	ffs "fassst/pkg/fs"
+	fs0 "fassst/pkg/fs"
+	ffs "fassst/pkg/fs/v2"
 )
 
-func Test_fs(t *testing.T) {
+func Test_fs2(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -48,7 +49,7 @@ func Test_fs(t *testing.T) {
 	for ti, tt := range tests {
 		t.Run(fmt.Sprintf("%d) %d,%d x %d:", ti, tt.depth, tt.degree, tt.routines), func(t *testing.T) {
 			consPath := fmt.Sprintf(tt.pathFmt, tt.depth, tt.degree)
-			_, fs, err := ffs.FileSystemByUrl(consPath)
+			_, fs, err := fs0.FileSystemByUrl(consPath)
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
@@ -58,17 +59,18 @@ func Test_fs(t *testing.T) {
 				t.Fatalf("list mock fs: %v", err)
 			}
 			if len(results) != tt.expected {
+				fmt.Println(results)
 				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(results))
 			}
 		})
 	}
 }
 
-func Benchmark_fs(b *testing.B) {
+func Benchmark_fs2(b *testing.B) {
 	r := 100
 	b.Run(fmt.Sprint(r), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:1000@")
+			_, fs, _ := fs0.FileSystemByUrl("mock://5:5:10:1000@")
 
 			res, err := ffs.List(fs, "/", r)
 

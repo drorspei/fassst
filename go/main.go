@@ -30,7 +30,7 @@ func main() {
 	}
 
 	t0 := time.Now()
-	res, err := ffs.List(fs, url, parallel, page)
+	res, err := ffs.List(fs, url, parallel)
 	t1 := time.Now()
 	if err != nil {
 		panic(err)

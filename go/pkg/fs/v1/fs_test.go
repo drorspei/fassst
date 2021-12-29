@@ -1,13 +1,15 @@
-package fs_test
+package fs_v1_test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
-	ffs "fassst/pkg/fs"
+	fs0 "fassst/pkg/fs"
+	ffs "fassst/pkg/fs/v1"
 )
 
-func Test_fs(t *testing.T) {
+func Test_fs1(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -48,32 +50,41 @@ func Test_fs(t *testing.T) {
 	for ti, tt := range tests {
 		t.Run(fmt.Sprintf("%d) %d,%d x %d:", ti, tt.depth, tt.degree, tt.routines), func(t *testing.T) {
 			consPath := fmt.Sprintf(tt.pathFmt, tt.depth, tt.degree)
-			_, fs, err := ffs.FileSystemByUrl(consPath)
+			_, fs, err := fs0.FileSystemByUrl(consPath)
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
-
-			results, err := ffs.List(fs, "/", tt.routines)
-			if err != nil {
-				t.Fatalf("list mock fs: %v", err)
-			}
-			if len(results) != tt.expected {
-				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(results))
+			
+			resChan := make(chan string, tt.expected)
+			wg := ffs.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
+				for _, i := range input {
+					resChan <- i
+				}
+				contWG.Done()
+			})
+			wg.Wait()
+			if len(resChan) != tt.expected {
+				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
 			}
 		})
 	}
 }
 
-func Benchmark_fs(b *testing.B) {
+func Benchmark_fs1(b *testing.B) {
 	r := 100
 	b.Run(fmt.Sprint(r), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:1000@")
-
-			res, err := ffs.List(fs, "/", r)
-
-			if err != nil || len(res) != 3125 {
-				b.Fatalf("len results expected=%d, actual=%d, err=%v", 3125, len(res), err)
+			_, fs, _ := fs0.FileSystemByUrl("mock://5:5:10:1000@")
+			resChan := make(chan string, 3125)
+			wg := ffs.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
+				for _, i := range input {
+					resChan <- i
+				}
+				contWG.Done()
+			})
+			wg.Wait()
+			if len(resChan) != 3125 {
+				b.Fatalf("len results expected=%d, actual=%d", 3125, len(resChan))
 			}
 		}
 	})
