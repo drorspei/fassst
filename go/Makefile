@@ -1,4 +1,4 @@
-.PHONY: build fbuild clean test bench tb accept
+.PHONY: build fbuild clean test bench tb
 
 build: test
 	go build -o bin/
@@ -11,7 +11,7 @@ clean:
 	go clean -testcache
 
 test: 
-	go test -v ./pkg/fs/... -timeout 5m
+	go test -v ./pkg/fs/... -timeout 5m -cover
 
 bench: 
 	go test -v -benchmem -run=^$$ -bench ^.*$$ ./pkg/fs/...

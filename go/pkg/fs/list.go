@@ -8,43 +8,22 @@ import (
 	"fassst/pkg/utils"
 )
 
-func List(fs FileSystem, startPath string, routines int) ([]string, error) {
-	drainChan := make(chan []string, routines)
+func List(fs FileSystem, startPath string, routines int, cont func([]string, *sync.WaitGroup)) *sync.WaitGroup {
 	runChan := make(chan utils.Unit, routines)
-	errChan := make(chan error)
 	var runWG sync.WaitGroup
-	var results []string
+	var contWG sync.WaitGroup
 
 	runWG.Add(1)
-	go lister(fs, startPath, nil, runChan, &runWG, drainChan, errChan)
+	go lister(fs, startPath, nil, runChan, &runWG, cont, &contWG)
 
-	var eating bool
-	go func() {
-		var v []string
-		for {
-			select {
-			case err := <-errChan:
-				panic(err)
-			case v, eating = <-drainChan:
-				results = append(results, v...)
-				eating = false
-			default:
-				time.Sleep(time.Millisecond)
-			}
-		}
-	}()
 	runWG.Wait()
-	for len(drainChan) > 0 || eating {
-		time.Sleep(time.Millisecond)
-	}
-
-	return results, nil
+	return &contWG
 }
 
 func lister(
 	fs FileSystem, url string, pagination Pagination,
 	runChan chan utils.Unit, runWG *sync.WaitGroup,
-	drainChan chan []string, errChan chan error,
+	cont func([]string, *sync.WaitGroup), contWG *sync.WaitGroup,
 ) {
 	runChan <- utils.U
 	defer func() { <-runChan }()
@@ -53,27 +32,28 @@ func lister(
 	if err != nil {
 		if strings.Contains(err.Error(), "SlowDown") {
 			time.Sleep(time.Second)
-			go lister(fs, url, pagination, runChan, runWG, drainChan, errChan)
+			go lister(fs, url, nil, runChan, runWG, cont, contWG)
 			return
 		}
-		errChan <- err
-		return
+		panic(err)
 	}
 
 	if new_pagination != nil {
 		runWG.Add(1)
-		go lister(fs, url, new_pagination, runChan, runWG, drainChan, errChan)
+		go lister(fs, url, new_pagination, runChan, runWG, cont, contWG)
 	}
 
 	for _, d := range dirs {
 		runWG.Add(1)
-		go lister(fs, MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, drainChan, errChan)
+		go lister(fs, MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, cont, contWG)
 	}
 
 	filenames := make([]string, len(files))
 	for i := 0; i < len(files); i++ {
 		filenames[i] = files[i].Name()
 	}
-	drainChan <- filenames
+
+	contWG.Add(1)
+	cont(filenames, contWG)
 	runWG.Done()
 }

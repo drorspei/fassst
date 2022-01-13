@@ -2,6 +2,7 @@ package fs_test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	ffs "fassst/pkg/fs"
@@ -53,27 +54,44 @@ func Test_fs(t *testing.T) {
 				t.Fatalf("get mock fs: %v", err)
 			}
 
-			results, err := ffs.List(fs, "/", tt.routines)
-			if err != nil {
-				t.Fatalf("list mock fs: %v", err)
+			resChan := make(chan string, tt.expected)
+			wg := ffs.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
+				for _, i := range input {
+					resChan <- i
+				}
+				contWG.Done()
+			})
+			wg.Wait()
+			if len(resChan) != tt.expected {
+				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
 			}
-			if len(results) != tt.expected {
-				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(results))
+			close(resChan)
+			var res []string
+			for r := range resChan {
+				res = append(res, r)
+			}
+			if len(res) != tt.expected {
+				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
 			}
 		})
 	}
 }
 
-func Benchmark_fs(b *testing.B) {
+func Benchmark_fs1(b *testing.B) {
 	r := 100
 	b.Run(fmt.Sprint(r), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:1000@")
-
-			res, err := ffs.List(fs, "/", r)
-
-			if err != nil || len(res) != 3125 {
-				b.Fatalf("len results expected=%d, actual=%d, err=%v", 3125, len(res), err)
+			resChan := make(chan string, 3125)
+			wg := ffs.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
+				for _, i := range input {
+					resChan <- i
+				}
+				contWG.Done()
+			})
+			wg.Wait()
+			if len(resChan) != 3125 {
+				b.Fatalf("len results expected=%d, actual=%d", 3125, len(resChan))
 			}
 		}
 	})

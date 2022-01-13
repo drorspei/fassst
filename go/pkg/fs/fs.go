@@ -52,9 +52,9 @@ func FileSystemByUrl(url string) (string, FileSystem, error) {
 		depth, errdepth := strconv.ParseInt(subparts[0], 10, 0)
 		degree, errdegree := strconv.ParseInt(subparts[1], 10, 0)
 		pagesize, errpagesize := strconv.ParseInt(subparts[2], 10, 0)
-		maxcallspersecond, errpagesize := strconv.ParseInt(subparts[3], 10, 0)
+		maxcallspersecond, errmaxcallspersecond := strconv.ParseInt(subparts[3], 10, 0)
 
-		if errdepth != nil || errdegree != nil || errpagesize != nil {
+		if errdepth != nil || errdegree != nil || errpagesize != nil || errmaxcallspersecond != nil {
 			return "", nil, fmt.Errorf("mock fs requires depth, degree, page size and max calls per second like mock://5:5:2:1@url")
 		}
 

@@ -5,12 +5,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	ffs "fassst/pkg/fs"
 )
-
-const page = 1000
 
 var parallel = 30
 
@@ -30,11 +29,22 @@ func main() {
 	}
 
 	t0 := time.Now()
-	res, err := ffs.List(fs, url, parallel)
+	resChan := make(chan string, parallel)
+	wg := ffs.List(fs, url, parallel, func(input []string, contWG *sync.WaitGroup) {
+		for _, i := range input {
+			resChan <- i
+		}
+		contWG.Done()
+	})
+	wg.Wait()
+
 	t1 := time.Now()
-	if err != nil {
-		panic(err)
+	close(resChan)
+	var res []string
+	for r := range resChan {
+		res = append(res, r)
 	}
+
 	os.WriteFile("toc2.txt", []byte(strings.Join(res, "\n")), 0644)
 	t2 := time.Now()
 	fmt.Println("Done :)")
