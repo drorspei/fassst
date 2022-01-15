@@ -1,4 +1,4 @@
-package fs
+package fassst
 
 import (
 	"fmt"
@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
+	pkgfs "fassst/pkg/fs"
 	"fassst/pkg/utils"
 )
 
-func List(fs FileSystem, startPath string, routines int, cont func([]string, *sync.WaitGroup)) *sync.WaitGroup {
+func List(fs pkgfs.FileSystem, startPath string, routines int, cont func([]string, *sync.WaitGroup)) *sync.WaitGroup {
 	runChan := make(chan utils.Unit, routines)
 	var runWG sync.WaitGroup
 	var contWG sync.WaitGroup
@@ -22,7 +23,7 @@ func List(fs FileSystem, startPath string, routines int, cont func([]string, *sy
 }
 
 func lister(
-	fs FileSystem, url string, pagination Pagination,
+	fs pkgfs.FileSystem, url string, pagination pkgfs.Pagination,
 	runChan chan utils.Unit, runWG *sync.WaitGroup,
 	cont func([]string, *sync.WaitGroup), contWG *sync.WaitGroup,
 ) {
@@ -46,7 +47,7 @@ func lister(
 
 	for _, d := range dirs {
 		runWG.Add(1)
-		go lister(fs, MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, cont, contWG)
+		go lister(fs, pkgfs.MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, cont, contWG)
 	}
 
 	filenames := make([]string, len(files))

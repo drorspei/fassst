@@ -1,14 +1,15 @@
-package fs_test
+package fassst_test
 
 import (
 	"fmt"
 	"sync"
 	"testing"
 
-	ffs "fassst/pkg/fs"
+	fst "fassst/pkg/fassst"
+	pkgfs "fassst/pkg/fs"
 )
 
-func Test_fs_copy(t *testing.T) {
+func Test_fs_list(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -49,13 +50,13 @@ func Test_fs_copy(t *testing.T) {
 	for ti, tt := range tests {
 		t.Run(fmt.Sprintf("%d) %d,%d x %d:", ti, tt.depth, tt.degree, tt.routines), func(t *testing.T) {
 			consPath := fmt.Sprintf(tt.pathFmt, tt.depth, tt.degree)
-			_, fs, err := ffs.FileSystemByUrl(consPath)
+			_, fs, err := pkgfs.FileSystemByUrl(consPath)
 			if err != nil {
 				t.Fatalf("get mock fs: %v", err)
 			}
 
 			resChan := make(chan string, tt.expected)
-			wg := ffs.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
+			wg := fst.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
 				for _, i := range input {
 					resChan <- i
 				}
@@ -77,13 +78,13 @@ func Test_fs_copy(t *testing.T) {
 	}
 }
 
-func Benchmark_fs_copy(b *testing.B) {
+func Benchmark_fs_list(b *testing.B) {
 	r := 100
 	b.Run(fmt.Sprint(r), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, fs, _ := ffs.FileSystemByUrl("mock://5:5:10:1000@")
+			_, fs, _ := pkgfs.FileSystemByUrl("mock://5:5:10:1000@")
 			resChan := make(chan string, 3125)
-			wg := ffs.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
+			wg := fst.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
 				for _, i := range input {
 					resChan <- i
 				}

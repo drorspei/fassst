@@ -12,6 +12,7 @@ clean:
 
 test: 
 	go test -v ./pkg/fs/... -timeout 5m -cover
+	go test -v ./pkg/fassst/... -timeout 5m -cover
 
 bench: 
 	go test -v -benchmem -run=^$$ -bench ^.*$$ ./pkg/fs/...

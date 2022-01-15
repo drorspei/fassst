@@ -1,13 +1,15 @@
-package fs
+package fassst
 
 import (
 	"fmt"
 	"path"
 	"strings"
 	"sync"
+
+	pkgfs "fassst/pkg/fs"
 )
 
-func Copy(sourceFs, targetFs FileSystem, sourcePath, targetPath string, routines int) {
+func Copy(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, routines int) {
 	dirs := make(map[string]struct{})
 	wg := List(sourceFs, sourcePath, routines, func(files []string, contWG *sync.WaitGroup) {
 		for _, filename := range files {

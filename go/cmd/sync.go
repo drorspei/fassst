@@ -17,6 +17,7 @@ func NewSyncCommand(opts *options) *cobra.Command {
 		Run: func(_ *cobra.Command, _ []string) {
 			fmt.Println("cmd version:", Version)
 			fmt.Println("pkg version:", fs.Version)
+			fmt.Println("command not implemented")
 		},
 	}
 

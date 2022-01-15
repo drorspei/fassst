@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
 )
 
@@ -50,7 +51,7 @@ func (o listOptions) run() error {
 	}
 	o.log.Println("listing...")
 	resChan := make(chan string, o.maxGoroutines)
-	wg := pkgfs.List(fs, url, o.maxGoroutines, func(input []string, contWG *sync.WaitGroup) {
+	wg := fst.List(fs, url, o.maxGoroutines, func(input []string, contWG *sync.WaitGroup) {
 		for _, i := range input {
 			resChan <- i
 		}

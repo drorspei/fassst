@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
 )
 
@@ -48,6 +49,6 @@ func (o copyOptions) run() error {
 		return fmt.Errorf("target file system from url: %w", err)
 	}
 
-	pkgfs.Copy(fs, fsTarget, url, urlTarget, o.maxGoroutines)
+	fst.Copy(fs, fsTarget, url, urlTarget, o.maxGoroutines)
 	return nil
 }
