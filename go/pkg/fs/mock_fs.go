@@ -2,12 +2,18 @@ package fs
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"fassst/pkg/utils"
+)
+
+var (
+	MockHistory  = make([]string, 0)
+	MockContents = make(map[string][]byte)
 )
 
 type MockKTreeFS struct {
@@ -114,4 +120,22 @@ func (fs MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []
 	time.Sleep(time.Millisecond * time.Duration(fs.CallDelayMilis))
 
 	return dirs, files, nil, nil
+}
+
+func (fs MockKTreeFS) ReadFile(path string) ([]byte, error) {
+	if content, ok := MockContents[path]; ok {
+		return content, nil
+	}
+	return nil, &os.PathError{Op: "open", Path: path}
+}
+
+func (fs MockKTreeFS) WriteFile(path string, content []byte) error {
+	MockHistory = append(MockHistory, path)
+	MockContents[path] = content
+	return nil
+}
+
+func (fs MockKTreeFS) Mkdir(path string) error {
+	MockHistory = append(MockHistory, path)
+	return nil
 }

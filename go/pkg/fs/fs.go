@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const Version = "v0.1.0"
+
 func MakeSureHasSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
 		return s
@@ -28,6 +30,9 @@ type Pagination interface{}
 
 type FileSystem interface {
 	ReadDir(string, Pagination) ([]DirEntry, []FileEntry, Pagination, error)
+	ReadFile(path string) ([]byte, error)
+	WriteFile(path string, content []byte) error
+	Mkdir(path string) error
 }
 
 var global_recent_mock_calls []time.Time

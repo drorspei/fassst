@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -94,4 +95,28 @@ func (fs S3FS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEnt
 		})
 		return ReadDirInner(bucket, prefix, output, err)
 	}
+}
+
+func (fs S3FS) ReadFile(path string) ([]byte, error) {
+	parts := strings.Split(path, "/")
+	output, err := fs.client.GetObject(fs.ctx, &s3.GetObjectInput{
+		Bucket: aws.String(parts[0]),
+		Key:    aws.String(path),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("s3 get object: %w", err)
+	}
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(output.Body); err != nil {
+		return nil, fmt.Errorf("s3 read object: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func (fs S3FS) WriteFile(path string, content []byte) error {
+	return fmt.Errorf("s3 write not implemented")
+}
+
+func (fs S3FS) Mkdir(path string) error {
+	return fmt.Errorf("s3 mkdir not implemented")
 }

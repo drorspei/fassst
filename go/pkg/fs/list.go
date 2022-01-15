@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ func lister(
 			go lister(fs, url, nil, runChan, runWG, cont, contWG)
 			return
 		}
-		panic(err)
+		panic(fmt.Errorf("%s: %w", url, err))
 	}
 
 	if new_pagination != nil {

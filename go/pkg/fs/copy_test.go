@@ -8,7 +8,7 @@ import (
 	ffs "fassst/pkg/fs"
 )
 
-func Test_fs(t *testing.T) {
+func Test_fs_copy(t *testing.T) {
 	tests := []struct {
 		pathFmt  string
 		depth    int
@@ -77,7 +77,7 @@ func Test_fs(t *testing.T) {
 	}
 }
 
-func Benchmark_fs1(b *testing.B) {
+func Benchmark_fs_copy(b *testing.B) {
 	r := 100
 	b.Run(fmt.Sprint(r), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

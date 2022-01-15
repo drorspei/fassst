@@ -31,3 +31,15 @@ func (fs LocalFS) ReadDir(key string, pagination Pagination) ([]DirEntry, []File
 	}
 	return dirs, files, nil, nil
 }
+
+func (fs LocalFS) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+func (fs LocalFS) WriteFile(path string, content []byte) error {
+	return os.WriteFile(path, content, 0644)
+}
+
+func (fs LocalFS) Mkdir(path string) error {
+	return os.MkdirAll(path, 0644)
+}
