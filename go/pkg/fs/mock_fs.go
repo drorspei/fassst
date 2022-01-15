@@ -2,7 +2,7 @@ package fs
 
 import (
 	"fmt"
-	"os"
+	pathutil "path"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,18 +11,13 @@ import (
 	"fassst/pkg/utils"
 )
 
-var (
-	MockHistory  = make([]string, 0)
-	MockContents = make(map[string][]byte)
-)
-
 type MockKTreeFS struct {
 	Depth                uint64
 	Degree               uint64
 	PageSize             uint64
 	MaxCallsPerSecond    uint64
 	CallDelayMillis      uint64
-	RecentMockCalls      *[]time.Time
+	RecentMockCalls      []time.Time
 	RecentMockCallsMutex *sync.Mutex
 }
 
@@ -31,32 +26,32 @@ type MockKTreePagination struct {
 	Start uint64
 }
 
-func (fs MockKTreeFS) AddRecentMockCall(time time.Time) bool {
+func (fs *MockKTreeFS) AddRecentMockCall(time time.Time) bool {
 	fs.RecentMockCallsMutex.Lock()
 	defer fs.RecentMockCallsMutex.Unlock()
 
 	i := 0
-	for i < len(*fs.RecentMockCalls) && time.Sub((*fs.RecentMockCalls)[i]).Seconds() >= 1 {
+	for i < len(fs.RecentMockCalls) && time.Sub(fs.RecentMockCalls[i]).Seconds() >= 1 {
 		i++
 	}
 
 	if i > 0 {
-		*fs.RecentMockCalls = (*fs.RecentMockCalls)[i:]
+		fs.RecentMockCalls = fs.RecentMockCalls[i:]
 	}
 
-	if uint64(len(*fs.RecentMockCalls)) < fs.MaxCallsPerSecond {
-		*fs.RecentMockCalls = append(*fs.RecentMockCalls, time)
+	if uint64(len(fs.RecentMockCalls)) < fs.MaxCallsPerSecond {
+		fs.RecentMockCalls = append(fs.RecentMockCalls, time)
 		return true
 	}
 
 	return false
 }
 
-func (fs MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
+func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
 	if !fs.AddRecentMockCall(time.Now()) {
 		return nil, nil, nil, fmt.Errorf("too fast; Error Code: SlowDown")
 	}
-
+	
 	var dirs []DirEntry
 	var files []FileEntry
 	var start uint64 = 0
@@ -123,19 +118,16 @@ func (fs MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, []
 }
 
 func (fs MockKTreeFS) ReadFile(path string) ([]byte, error) {
-	if content, ok := MockContents[path]; ok {
-		return content, nil
-	}
-	return nil, &os.PathError{Op: "open", Path: path}
+	base := pathutil.Base(path)
+	return []byte(base), nil
 }
 
 func (fs MockKTreeFS) WriteFile(path string, content []byte) error {
-	MockHistory = append(MockHistory, path)
-	MockContents[path] = content
+	time.Sleep(time.Microsecond * time.Duration(len(content)))
 	return nil
 }
 
 func (fs MockKTreeFS) Mkdir(path string) error {
-	MockHistory = append(MockHistory, path)
+	time.Sleep(time.Microsecond)
 	return nil
 }

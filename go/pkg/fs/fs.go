@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const Version = "v0.2.3"
+const Version = "v0.2.4"
 
 func MakeSureHasSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
@@ -34,9 +34,6 @@ type FileSystem interface {
 	WriteFile(path string, content []byte) error
 	Mkdir(path string) error
 }
-
-var global_recent_mock_calls []time.Time
-var global_recent_mock_calls_mutex sync.Mutex
 
 func FileSystemByUrl(url string) (string, FileSystem, error) {
 	if strings.HasPrefix(url, "s3://") {
@@ -63,10 +60,15 @@ func FileSystemByUrl(url string) (string, FileSystem, error) {
 			return "", nil, fmt.Errorf("mock fs requires depth, degree, page size and max calls per second like mock://5:5:2:1@url")
 		}
 
-		return strings.Join(parts[1:], "/"), MockKTreeFS{
-			uint64(depth), uint64(degree), uint64(pagesize), uint64(maxcallspersecond), 0,
-			&global_recent_mock_calls, &global_recent_mock_calls_mutex,
+		return strings.Join(parts[1:], "/"), &MockKTreeFS{
+			uint64(depth), uint64(degree), uint64(pagesize),
+			uint64(maxcallspersecond), 0,
+			[]time.Time{}, &sync.Mutex{},
 		}, nil
+	}
+
+	if strings.HasPrefix(url, "mem://") {
+		return url, &MemFS{make([]string, 0), make(map[string][]byte), &sync.Mutex{}}, nil
 	}
 
 	return url, LocalFS{}, nil
