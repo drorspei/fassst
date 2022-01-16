@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
@@ -49,16 +50,17 @@ func (o listOptions) run() error {
 	if err != nil {
 		return fmt.Errorf("file system from url: %w", err)
 	}
-	o.log.Println("listing...")
+	o.log.Info("listing...")
 	resChan := make(chan string, o.maxGoroutines)
 	wg := fst.List(fs, url, o.maxGoroutines, func(input []string, contWG *sync.WaitGroup) {
 		for _, i := range input {
 			resChan <- i
 		}
+		o.log.Debug("page done")
 		contWG.Done()
-	})
+	}, o.log)
 	wg.Wait()
-	o.log.Println("collecting...")
+	o.log.Info("collecting...")
 	close(resChan)
 	var res []string
 	for r := range resChan {
@@ -72,7 +74,7 @@ func (o listOptions) run() error {
 		for _, r := range res {
 			fmt.Println(r)
 		}
-		fmt.Println(len(res), "entries listed.")
+		o.log.Info("entries listed", zap.Int("count", len(res)))
 	}
 	return nil
 }

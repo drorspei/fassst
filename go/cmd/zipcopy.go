@@ -9,16 +9,15 @@ import (
 	pkgfs "fassst/pkg/fs"
 )
 
-const mb = 1024 * 1024
-
 type zipcopyOptions struct {
 	*options
 
 	source string
 	target string
 
-	maxBatchCount int
-	maxBatchSize  int
+	maxBatchCount    int
+	maxBatchSize     int
+	batchAcrossPages bool
 }
 
 func NewZipCopyCommand(opts *options) *cobra.Command {
@@ -54,7 +53,12 @@ func NewZipCopyCommand(opts *options) *cobra.Command {
 		200,
 		"maximum amount of files per archive(in MB)",
 	)
-
+	command.Flags().BoolVarP(&zipcopyOpts.batchAcrossPages,
+		"batch-across-pages",
+		"b",
+		false,
+		"allow more than 1 page per batch",
+	)
 	return command
 }
 
@@ -67,7 +71,11 @@ func (o zipcopyOptions) run() error {
 	if err != nil {
 		return fmt.Errorf("target file system from url: %w", err)
 	}
-
-	fst.Copy(fs, fsTarget, url, urlTarget, o.maxGoroutines)
+	o.log.Info("zip copying...")
+	if o.batchAcrossPages {
+		fst.ZipCopyAcrossPages(fs, fsTarget, url, urlTarget, o.maxGoroutines, o.maxBatchCount, o.maxBatchSize, o.log)
+	} else {
+		fst.ZipCopyPages(fs, fsTarget, url, urlTarget, o.maxGoroutines, o.maxBatchCount, o.maxBatchSize, o.log)
+	}
 	return nil
 }

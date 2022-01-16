@@ -6,6 +6,8 @@ import (
 
 	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
+
+	"go.uber.org/zap"
 )
 
 func Test_fs_copy(t *testing.T) {
@@ -71,8 +73,8 @@ func Test_fs_copy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get target fs: %v", err)
 			}
-
-			fst.Copy(srcFs, tgtFs, srcUrl, tgtUrl, tt.routines)
+			log, _ := zap.NewProduction()
+			fst.Copy(srcFs, tgtFs, srcUrl, tgtUrl, tt.routines, log)
 
 			actual := tgtFs.(*pkgfs.MemFS).Contents
 			actualCount := len(actual)

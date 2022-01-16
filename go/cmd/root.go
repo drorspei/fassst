@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 type options struct {
 	maxGoroutines int
 
-	log *log.Logger
+	log     *zap.Logger
+	verbose bool
 }
 
 func (o options) Validate() error {
@@ -25,14 +26,24 @@ func (o options) Validate() error {
 func NewCommand() *cobra.Command {
 	var opts options
 	var startTime time.Time
-	opts.log = log.Default()
 	command := &cobra.Command{
 		Use:          "fassst",
 		Short:        "go fassst!",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			err := opts.Validate()
+			var err error
+			// TODO: configure log properly?
+			if opts.verbose {
+				if opts.log, err = zap.NewDevelopment(); err != nil {
+					panic(fmt.Errorf("new zap dev logger: %w", err))
+				}
+			} else {
+				if opts.log, err = zap.NewProduction(); err != nil {
+					panic(fmt.Errorf("new zap prod logger: %w", err))
+				}
+			}
+			err = opts.Validate()
 			if err != nil {
 				return fmt.Errorf("validate opts: %w", err)
 			}
@@ -41,7 +52,8 @@ func NewCommand() *cobra.Command {
 		},
 		PersistentPostRun: func(_ *cobra.Command, _ []string) {
 			delta := time.Since(startTime)
-			opts.log.Println(delta, "fassst!")
+			opts.log.Info("fassst!", zap.Duration("run time", delta))
+			opts.log.Sync()
 		},
 	}
 
@@ -57,7 +69,15 @@ func NewCommand() *cobra.Command {
 		"max-goroutines",
 		"m",
 		30,
-		"number of concurrent goroutines")
+		"number of concurrent goroutines",
+	)
+
+	command.PersistentFlags().BoolVarP(&opts.verbose,
+		"verbose",
+		"v",
+		false,
+		"print debug info",
+	)
 
 	return command
 }

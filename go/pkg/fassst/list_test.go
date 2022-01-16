@@ -7,6 +7,8 @@ import (
 
 	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
+
+	"go.uber.org/zap"
 )
 
 func Test_fs_list(t *testing.T) {
@@ -56,12 +58,13 @@ func Test_fs_list(t *testing.T) {
 			}
 
 			resChan := make(chan string, tt.expected)
+			log, _ := zap.NewProduction()
 			wg := fst.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
 				for _, i := range input {
 					resChan <- i
 				}
 				contWG.Done()
-			})
+			}, log)
 			wg.Wait()
 			if len(resChan) != tt.expected {
 				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
@@ -84,12 +87,13 @@ func Benchmark_fs_list(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, fs, _ := pkgfs.FileSystemByUrl("mock://5:5:10:1000@")
 			resChan := make(chan string, 3125)
+			log, _ := zap.NewProduction()
 			wg := fst.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
 				for _, i := range input {
 					resChan <- i
 				}
 				contWG.Done()
-			})
+			}, log)
 			wg.Wait()
 			if len(resChan) != 3125 {
 				b.Fatalf("len results expected=%d, actual=%d", 3125, len(resChan))

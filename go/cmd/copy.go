@@ -48,7 +48,7 @@ func (o copyOptions) run() error {
 	if err != nil {
 		return fmt.Errorf("target file system from url: %w", err)
 	}
-
-	fst.Copy(fs, fsTarget, url, urlTarget, o.maxGoroutines)
+	o.log.Info("copying...")
+	fst.Copy(fs, fsTarget, url, urlTarget, o.maxGoroutines, o.log)
 	return nil
 }

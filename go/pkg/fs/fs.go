@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const Version = "v0.2.4"
+const Version = "v0.4.0"
 
 func MakeSureHasSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
