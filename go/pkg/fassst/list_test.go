@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	fst "fassst/pkg/fassst"
 	pkgfs "fassst/pkg/fs"
@@ -19,6 +20,13 @@ func Test_fs_list(t *testing.T) {
 		routines int
 		expected int
 	}{
+		{
+			pathFmt:  "mock://%d:%d:1:100@",
+			depth:    3,
+			degree:   3,
+			routines: 2,
+			expected: 27,
+		},
 		{
 			pathFmt:  "mock://%d:%d:10:100@",
 			depth:    4,
@@ -59,23 +67,38 @@ func Test_fs_list(t *testing.T) {
 
 			resChan := make(chan string, tt.expected)
 			log, _ := zap.NewProduction()
+
+			var res []string
+			var done, reading bool
+			reading = true
+			go func() {
+				for !done || len(resChan) > 0 {
+					select {
+					case r := <-resChan:
+						res = append(res, r)
+
+					default:
+						time.Sleep(time.Millisecond)
+					}
+				}
+				reading = false
+			}()
+
 			wg := fst.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
 				for _, i := range input {
 					resChan <- i
 				}
 				contWG.Done()
 			}, log)
+
 			wg.Wait()
-			if len(resChan) != tt.expected {
-				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
+			done = true
+			for reading {
+				time.Sleep(time.Millisecond)
 			}
-			close(resChan)
-			var res []string
-			for r := range resChan {
-				res = append(res, r)
-			}
+
 			if len(res) != tt.expected {
-				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(resChan))
+				t.Fatalf("len results expected=%d, actual=%d", tt.expected, len(res))
 			}
 		})
 	}

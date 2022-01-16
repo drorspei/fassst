@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -52,6 +53,22 @@ func (o listOptions) run() error {
 	}
 	o.log.Info("listing...")
 	resChan := make(chan string, o.maxGoroutines)
+	var res []string
+	var done, reading bool
+	reading = true
+	go func() {
+		for !done || len(resChan) > 0 {
+			select {
+			case r := <-resChan:
+				res = append(res, r)
+
+			default:
+				time.Sleep(time.Millisecond)
+			}
+		}
+		reading = false
+	}()
+
 	wg := fst.List(fs, url, o.maxGoroutines, func(input []string, contWG *sync.WaitGroup) {
 		for _, i := range input {
 			resChan <- i
@@ -60,12 +77,13 @@ func (o listOptions) run() error {
 		contWG.Done()
 	}, o.log)
 	wg.Wait()
-	o.log.Info("collecting...")
-	close(resChan)
-	var res []string
-	for r := range resChan {
-		res = append(res, r)
+	done = true
+
+	for reading {
+		time.Sleep(time.Millisecond)
 	}
+	o.log.Info("collecting...")
+
 	if len(o.outputFile) > 0 {
 		if err := os.WriteFile(o.outputFile, []byte(strings.Join(res, "\n")), 0644); err != nil {
 			return fmt.Errorf("write output file: %w", err)
