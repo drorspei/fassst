@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const Version = "v0.4.0"
+const Version = "v0.5.0"
 
 func MakeSureHasSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
@@ -20,6 +20,7 @@ func MakeSureHasSuffix(s, suffix string) string {
 
 type FileEntry interface {
 	Name() string
+	Size() int64
 }
 
 type DirEntry interface {

@@ -47,11 +47,11 @@ func ReadDirInner(bucket string, prefix string, output *s3.ListObjectsV2Output, 
 
 	// log.Println("first page results:")
 	for _, object := range output.Contents {
-		files = append(files, SimpleFileEntry{bucket + "/" + *object.Key})
+		files = append(files, SimpleFileEntry{bucket + "/" + *object.Key, object.Size})
 		// log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
 	}
 	for _, object := range output.CommonPrefixes {
-		dirs = append(dirs, SimpleFileEntry{MakeSureHasSuffix(bucket+"/"+*object.Prefix, "/")})
+		dirs = append(dirs, SimpleFileEntry{MakeSureHasSuffix(bucket+"/"+*object.Prefix, "/"), 0})
 		// log.Printf("subdir=%s", aws.ToString(object.Prefix))
 	}
 
@@ -66,7 +66,7 @@ func ReadDirInner(bucket string, prefix string, output *s3.ListObjectsV2Output, 
 // returns dirs, fileentries, pagination, error
 func (fs S3FS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
 	// Get the first page of results for ListObjectsV2 for a bucket
-	parts := strings.Split(key, "/")
+	parts := strings.SplitN(key, "/", 1)
 	bucket := parts[0]
 	prefix := strings.Join(parts[1:], "/")
 
@@ -98,10 +98,11 @@ func (fs S3FS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEnt
 }
 
 func (fs S3FS) ReadFile(path string) ([]byte, error) {
-	parts := strings.Split(path, "/")
+	parts := strings.SplitN(path, "/", 1)
+
 	output, err := fs.client.GetObject(fs.ctx, &s3.GetObjectInput{
 		Bucket: aws.String(parts[0]),
-		Key:    aws.String(path),
+		Key:    aws.String(parts[1]),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("s3 get object: %w", err)

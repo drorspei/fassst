@@ -51,7 +51,7 @@ func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, [
 	if !fs.AddRecentMockCall(time.Now()) {
 		return nil, nil, nil, fmt.Errorf("too fast; Error Code: SlowDown")
 	}
-	
+
 	var dirs []DirEntry
 	var files []FileEntry
 	var start uint64 = 0
@@ -100,11 +100,11 @@ func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, [
 
 	if depth < fs.Depth {
 		for i := start; i < utils.Min(start+fs.PageSize, fs.Degree); i++ {
-			dirs = append(dirs, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i)})
+			dirs = append(dirs, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i), 0})
 		}
 	} else {
 		for i := start; i < utils.Min(start+fs.PageSize, fs.Degree); i++ {
-			files = append(files, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i)})
+			files = append(files, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i), 1})
 		}
 	}
 

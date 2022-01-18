@@ -11,7 +11,9 @@ import (
 	"fassst/pkg/utils"
 )
 
-func List(fs pkgfs.FileSystem, startPath string, routines int, cont func([]string, *sync.WaitGroup), log *zap.Logger) *sync.WaitGroup {
+const Version = "v0.5.1"
+
+func List(fs pkgfs.FileSystem, startPath string, routines int, cont func([]pkgfs.FileEntry), log *zap.Logger) {
 	runChan := make(chan utils.Unit, routines)
 	var runWG sync.WaitGroup
 	var contWG sync.WaitGroup
@@ -20,13 +22,12 @@ func List(fs pkgfs.FileSystem, startPath string, routines int, cont func([]strin
 	go lister(fs, startPath, nil, runChan, &runWG, cont, &contWG, log)
 
 	runWG.Wait()
-	return &contWG
 }
 
 func lister(
 	fs pkgfs.FileSystem, url string, pagination pkgfs.Pagination,
 	runChan chan utils.Unit, runWG *sync.WaitGroup,
-	cont func([]string, *sync.WaitGroup), contWG *sync.WaitGroup,
+	cont func([]pkgfs.FileEntry), contWG *sync.WaitGroup,
 	log *zap.Logger,
 ) {
 	runChan <- utils.U
@@ -56,13 +57,7 @@ func lister(
 		go lister(fs, pkgfs.MakeSureHasSuffix(d.Name(), "/"), nil, runChan, runWG, cont, contWG, log)
 	}
 
-	filenames := make([]string, len(files))
-	for i := 0; i < len(files); i++ {
-		filenames[i] = files[i].Name()
-		log.Debug("found file", zap.String("path", filenames[i]))
-	}
-
 	contWG.Add(1)
-	cont(filenames, contWG)
+	cont(files)
 	runWG.Done()
 }

@@ -5,10 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"fassst/pkg/fassst"
 	"fassst/pkg/fs"
 )
 
-const Version = "v0.4.0"
+const Version = "v0.4.1"
 
 func NewVersionCommand() *cobra.Command {
 	command := &cobra.Command{
@@ -18,7 +19,8 @@ func NewVersionCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		Run: func(_ *cobra.Command, _ []string) {
 			fmt.Println("cmd version:", Version)
-			fmt.Println("pkg version:", fs.Version)
+			fmt.Println("pkg/fs version:", fs.Version)
+			fmt.Println("pkg/fassst version:", fassst.Version)
 		},
 	}
 

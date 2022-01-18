@@ -21,9 +21,9 @@ func (fs MemFS) ReadDir(path string, pagination Pagination) ([]DirEntry, []FileE
 			continue
 		}
 		if c := fs.Contents[key]; c == nil {
-			dirs = append(dirs, SimpleFileEntry{key})
+			dirs = append(dirs, SimpleFileEntry{key, 0})
 		} else {
-			files = append(files, SimpleFileEntry{key})
+			files = append(files, SimpleFileEntry{key, int64(len(c))})
 		}
 	}
 	return dirs, files, nil, nil

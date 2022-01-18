@@ -33,7 +33,7 @@ func NewZipCopyCommand(opts *options) *cobra.Command {
 			if len(args) == 2 {
 				zipcopyOpts.target = pkgfs.MakeSureHasSuffix(args[1], "/")
 			} else {
-				zipcopyOpts.target = "."
+				zipcopyOpts.target = "./"
 			}
 			zipcopyOpts.source = pkgfs.MakeSureHasSuffix(args[0], "/")
 			return zipcopyOpts.run()

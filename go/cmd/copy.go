@@ -29,7 +29,7 @@ func NewCopyCommand(opts *options) *cobra.Command {
 			if len(args) == 2 {
 				copyOpts.target = pkgfs.MakeSureHasSuffix(args[1], "/")
 			} else {
-				copyOpts.target = "."
+				copyOpts.target = "./"
 			}
 			copyOpts.source = pkgfs.MakeSureHasSuffix(args[0], "/")
 			return copyOpts.run()

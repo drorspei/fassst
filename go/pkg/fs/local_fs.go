@@ -8,11 +8,15 @@ import (
 type LocalFS struct{}
 
 type SimpleFileEntry struct {
-	Path string
+	Path  string
+	Bytes int64
 }
 
 func (f SimpleFileEntry) Name() string {
 	return f.Path
+}
+func (f SimpleFileEntry) Size() int64 {
+	return f.Bytes
 }
 
 func (fs LocalFS) ReadDir(key string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
@@ -23,10 +27,14 @@ func (fs LocalFS) ReadDir(key string, pagination Pagination) ([]DirEntry, []File
 	var dirs []DirEntry
 	var files []FileEntry
 	for _, de := range dirents {
+		info, err := de.Info()
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("file info: %w", err)
+		}
 		if de.IsDir() {
-			dirs = append(dirs, SimpleFileEntry{MakeSureHasSuffix(key+de.Name(), "/")})
+			dirs = append(dirs, SimpleFileEntry{MakeSureHasSuffix(key+de.Name(), "/"), info.Size()})
 		} else {
-			files = append(files, SimpleFileEntry{key + de.Name()})
+			files = append(files, SimpleFileEntry{key + de.Name(), info.Size()})
 		}
 	}
 	return dirs, files, nil, nil

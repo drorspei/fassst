@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -69,14 +68,14 @@ func (o listOptions) run() error {
 		reading = false
 	}()
 
-	wg := fst.List(fs, url, o.maxGoroutines, func(input []string, contWG *sync.WaitGroup) {
+	fst.List(fs, url, o.maxGoroutines, func(input []pkgfs.FileEntry) {
 		for _, i := range input {
-			resChan <- i
+			resChan <- i.Name()
 		}
 		o.log.Debug("page done")
-		contWG.Done()
+
 	}, o.log)
-	wg.Wait()
+
 	done = true
 
 	for reading {

@@ -73,7 +73,7 @@ func Test_fs_copy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get target fs: %v", err)
 			}
-			log, _ := zap.NewProduction()
+			log, _ := zap.NewDevelopment()
 			fst.Copy(srcFs, tgtFs, srcUrl, tgtUrl, tt.routines, log)
 
 			actual := tgtFs.(*pkgfs.MemFS).Contents
@@ -84,6 +84,7 @@ func Test_fs_copy(t *testing.T) {
 			}
 			for k, v := range actual {
 				if _, ok := tt.expectedContents[k]; !ok {
+					fmt.Println(actual)
 					t.Fatalf("missing key %s", k)
 				}
 				for i, b := range tt.expectedContents[k] {

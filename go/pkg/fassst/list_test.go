@@ -2,7 +2,6 @@ package fassst_test
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -84,14 +83,12 @@ func Test_fs_list(t *testing.T) {
 				reading = false
 			}()
 
-			wg := fst.List(fs, "/", tt.routines, func(input []string, contWG *sync.WaitGroup) {
+			fst.List(fs, "/", tt.routines, func(input []pkgfs.FileEntry) {
 				for _, i := range input {
-					resChan <- i
+					resChan <- i.Name()
 				}
-				contWG.Done()
 			}, log)
 
-			wg.Wait()
 			done = true
 			for reading {
 				time.Sleep(time.Millisecond)
@@ -111,13 +108,11 @@ func Benchmark_fs_list(b *testing.B) {
 			_, fs, _ := pkgfs.FileSystemByUrl("mock://5:5:10:1000@")
 			resChan := make(chan string, 3125)
 			log, _ := zap.NewProduction()
-			wg := fst.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
+			fst.List(fs, "/", r, func(input []pkgfs.FileEntry) {
 				for _, i := range input {
-					resChan <- i
+					resChan <- i.Name()
 				}
-				contWG.Done()
 			}, log)
-			wg.Wait()
 			if len(resChan) != 3125 {
 				b.Fatalf("len results expected=%d, actual=%d", 3125, len(resChan))
 			}
