@@ -100,11 +100,11 @@ func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, [
 
 	if depth < fs.Depth {
 		for i := start; i < utils.Min(start+fs.PageSize, fs.Degree); i++ {
-			dirs = append(dirs, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i), 0})
+			dirs = append(dirs, NewSimpleEntry(fmt.Sprintf("%s/%d", base, i), true))
 		}
 	} else {
 		for i := start; i < utils.Min(start+fs.PageSize, fs.Degree); i++ {
-			files = append(files, SimpleFileEntry{fmt.Sprintf("%s/%d", base, i), 1})
+			files = append(files, NewSimpleEntry(fmt.Sprintf("%s/%d", base, i), false))
 		}
 	}
 
@@ -122,7 +122,7 @@ func (fs MockKTreeFS) ReadFile(path string) ([]byte, error) {
 	return []byte(base), nil
 }
 
-func (fs MockKTreeFS) WriteFile(path string, content []byte) error {
+func (fs MockKTreeFS) WriteFile(path string, content []byte, modTime time.Time) error {
 	time.Sleep(time.Microsecond * time.Duration(len(content)))
 	return nil
 }

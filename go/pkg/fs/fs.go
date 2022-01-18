@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,10 @@ func MakeSureHasSuffix(s, suffix string) string {
 type FileEntry interface {
 	Name() string
 	Size() int64
+	ModTime() time.Time
+	IsDir() bool
+	Mode() os.FileMode
+	Sys() interface{}
 }
 
 type DirEntry interface {
@@ -32,7 +37,7 @@ type Pagination interface{}
 type FileSystem interface {
 	ReadDir(string, Pagination) ([]DirEntry, []FileEntry, Pagination, error)
 	ReadFile(path string) ([]byte, error)
-	WriteFile(path string, content []byte) error
+	WriteFile(path string, content []byte, modTime time.Time) error
 	Mkdir(path string) error
 }
 

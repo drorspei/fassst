@@ -9,12 +9,14 @@ import (
 	pkgfs "fassst/pkg/fs"
 )
 
-func Copy(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, routines int, log *zap.Logger) {
+func Sync(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, routines int, log *zap.Logger) {
 	List(sourceFs, sourcePath, routines, func(files []pkgfs.FileEntry) {
 		for _, file := range files {
 			outputFilename := strings.Replace(file.Name(), sourcePath, targetPath, 1)
 			pathBase := path.Base(outputFilename)
 			pathDir := outputFilename[:len(outputFilename)-len(pathBase)]
+
+			file.Name()
 
 			log.Debug("read source file", zap.String("filename", file.Name()))
 			content, err := sourceFs.ReadFile(file.Name())

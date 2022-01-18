@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -47,11 +48,11 @@ func ReadDirInner(bucket string, prefix string, output *s3.ListObjectsV2Output, 
 
 	// log.Println("first page results:")
 	for _, object := range output.Contents {
-		files = append(files, SimpleFileEntry{bucket + "/" + *object.Key, object.Size})
+		files = append(files, NewSimpleEntryTimeSize(bucket+"/"+*object.Key, false, object.Size, *object.LastModified))
 		// log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
 	}
 	for _, object := range output.CommonPrefixes {
-		dirs = append(dirs, SimpleFileEntry{MakeSureHasSuffix(bucket+"/"+*object.Prefix, "/"), 0})
+		dirs = append(dirs, NewSimpleEntryTimeSize(MakeSureHasSuffix(bucket+"/"+*object.Prefix, "/"), true, 0, time.Time{}))
 		// log.Printf("subdir=%s", aws.ToString(object.Prefix))
 	}
 
@@ -114,7 +115,7 @@ func (fs S3FS) ReadFile(path string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (fs S3FS) WriteFile(path string, content []byte) error {
+func (fs S3FS) WriteFile(path string, content []byte, modTime time.Time) error {
 	return fmt.Errorf("s3 write not implemented")
 }
 

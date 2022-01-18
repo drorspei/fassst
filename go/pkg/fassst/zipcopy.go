@@ -68,7 +68,7 @@ func genArchiveCloser(targetFs pkgfs.FileSystem, targetPath string, archiveBuffe
 			return
 		}
 		log.Info("writing archive", zap.String("path", archivePath))
-		if err := targetFs.WriteFile(archivePath, archiveBuffer.Bytes()); err != nil {
+		if err := targetFs.WriteFile(archivePath, archiveBuffer.Bytes(), time.Now()); err != nil {
 			log.Error("write archive file", zap.Error(err))
 			return
 		}
@@ -92,7 +92,13 @@ func ZipCopyPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath st
 				CloseAndWriteArchive = genArchiveCloser(targetFs, targetPath, archiveBuffer, zipWriter, log)
 			}
 			outputFilename := strings.Replace(file.Name(), sourcePath, "", 1)
-			fw, err := zipWriter.Create(outputFilename)
+			fh, err := zip.FileInfoHeader(file)
+			if err != nil {
+				log.Error("init zip header from file", zap.String("filename", file.Name()), zap.Error(err))
+				continue
+			}
+			fh.Method = zip.Deflate
+			fw, err := zipWriter.CreateHeader(fh)
 			if err != nil {
 				panic(fmt.Errorf("could not create file entry in archive: %w", err))
 			}

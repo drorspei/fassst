@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type MemFS struct {
@@ -21,9 +22,9 @@ func (fs MemFS) ReadDir(path string, pagination Pagination) ([]DirEntry, []FileE
 			continue
 		}
 		if c := fs.Contents[key]; c == nil {
-			dirs = append(dirs, SimpleFileEntry{key, 0})
+			dirs = append(dirs, NewSimpleEntry(key, true))
 		} else {
-			files = append(files, SimpleFileEntry{key, int64(len(c))})
+			files = append(files, NewSimpleEntry(key, false))
 		}
 	}
 	return dirs, files, nil, nil
@@ -43,7 +44,7 @@ func (fs MemFS) ReadFile(path string) ([]byte, error) {
 	}
 }
 
-func (fs *MemFS) WriteFile(path string, content []byte) error {
+func (fs *MemFS) WriteFile(path string, content []byte, modTime time.Time) error {
 	fs.mutex.Lock()
 	defer func() { fs.mutex.Unlock() }()
 	fs.History = append(fs.History, path)
