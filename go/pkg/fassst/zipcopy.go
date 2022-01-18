@@ -6,13 +6,16 @@ import (
 	"bytes"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	pkgfs "fassst/pkg/fs"
+	"fassst/pkg/utils"
 )
 
 func CommonPrefix(names []string) string {
@@ -57,10 +60,9 @@ func genArchiveCloser(targetFs pkgfs.FileSystem, targetPath string, archiveBuffe
 			targetPath,
 			prefix,
 			time.Now().Format("20060102_150405"),
-			strings.ReplaceAll(uuid.New().String(), "-", "_"),
+			strings.ReplaceAll(uuid.New().String(), "-", "_")[:8],
 		)
 		dir := path.Dir(prefix)
-		fmt.Println(prefix, dir)
 		if err := targetFs.Mkdir(targetPath + dir); err != nil {
 			log.Error("mkdir target", zap.Error(err))
 			return
@@ -118,110 +120,101 @@ func ZipCopyPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath st
 	}, log)
 }
 
-func ZipCopyAcrossPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, routines int, maxBatchCount, maxBatchSize int, log *zap.Logger) {
-	var fileCount int
-	var fileSize uint64
-	var archiveBuffer *bytes.Buffer
-	var archiveWriter *bufio.Writer
-	var zipWriter *zip.Writer
-	CloseAndWriteArchive := func(names []string) {
-		err := zipWriter.Close()
+func writeBatch(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, names []string, runChan chan utils.Unit, runWG *sync.WaitGroup, log *zap.Logger) {
+	runChan <- utils.U
+	defer func() {
+		<-runChan
+		runWG.Done()
+	}()
+
+	archiveBuffer := new(bytes.Buffer)
+	archiveWriter := bufio.NewWriter(archiveBuffer)
+	zipWriter := zip.NewWriter(archiveWriter)
+	CloseAndWriteArchive := genArchiveCloser(targetFs, targetPath, archiveBuffer, zipWriter, log)
+	var outputNames []string
+	for _, filename := range names {
+		outputFilename := strings.Replace(filename, sourcePath, "", 1)
+		outputNames = append(outputNames, outputFilename)
+		fw, err := zipWriter.Create(outputFilename)
 		if err != nil {
-			panic(fmt.Errorf("close zip writer: %w", err))
+			log.Error("create file entry in archive", zap.Error(err))
+			continue
+		}
+		content, err := sourceFs.ReadFile(filename)
+		if err != nil {
+			log.Error("read file", zap.Error(err))
+			continue
 		}
 
-		archivePath := fmt.Sprintf("%s%s_%s_%s.zip",
-			targetPath,
-			strings.ReplaceAll(CommonPrefix(names), "/", "@"),
-			time.Now().Format("20060102_150405"),
-			strings.ReplaceAll(uuid.New().String(), "-", "_"),
-		)
-
-		if err := targetFs.Mkdir(targetPath); err != nil {
-			panic(fmt.Errorf("mkdir target: %w", err))
-		}
-
-		if err := targetFs.WriteFile(archivePath, archiveBuffer.Bytes()); err != nil {
-			panic(fmt.Errorf("write archive file: %w", err))
+		_, err = fw.Write(content)
+		if err != nil {
+			log.Error("write content to file", zap.Error(err))
+			continue
 		}
 	}
+	CloseAndWriteArchive(outputNames)
+}
 
-	batchChan := make(chan []pkgfs.FileEntry, routines)
-	var done, writing bool
-	writing = true
+func ZipCopyAcrossPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, listRoutines, archiveRoutines int, maxBatchCount, maxBatchSize int, log *zap.Logger) {
+	var batchNames []string
+	var fileSize int64
+	resChan := make(chan []pkgfs.FileEntry, listRoutines)
+	batchChan := make(chan []string, archiveRoutines)
+
+	var archiveDone, writeDone bool
 	go func() {
-		for !done || len(batchChan) > 0 {
+		runChan := make(chan utils.Unit, archiveRoutines)
+		var runWG sync.WaitGroup
+		for !archiveDone || len(batchChan) > 0 {
 			select {
-			case result := <-batchChan:
-				for _, file := range result {
-					if fileCount == 0 {
-						archiveBuffer = new(bytes.Buffer)
-						archiveWriter = bufio.NewWriter(archiveBuffer)
-						zipWriter = zip.NewWriter(archiveWriter)
-					}
-					outputFilename := strings.Replace(file.Name(), sourcePath, "", 1)
-					fw, err := zipWriter.Create(outputFilename)
-					if err != nil {
-						panic(fmt.Errorf("could not create file entry in archive: %w", err))
-					}
+			case batch := <-batchChan:
+				runWG.Add(1)
+				go writeBatch(sourceFs, targetFs, sourcePath, targetPath, batch, runChan, &runWG, log)
+			default:
+				time.Sleep(time.Millisecond)
+			}
+		}
+		runWG.Wait()
+		writeDone = true
+	}()
 
-					content, err := sourceFs.ReadFile(file.Name())
-					if err != nil {
-						panic(fmt.Errorf("read file: %w", err))
-					}
-
-					sz, err := fw.Write(content)
-					if err != nil {
-						panic(fmt.Errorf("write content to file: %w", err))
-					}
-
-					fileSize += uint64(sz)
-					fileCount++
-					if fileCount >= maxBatchCount || fileSize >= uint64(maxBatchSize)*1024*1024 {
-						fileCount = 0
+	var listDone, transferDone bool
+	go func() {
+		for !listDone || len(resChan) > 0 {
+			select {
+			case files := <-resChan:
+				sort.Slice(files, func(i, j int) bool {
+					return files[i].Name() < files[j].Name()
+				})
+				for _, file := range files {
+					if len(batchNames)+1 > maxBatchCount || (fileSize+file.Size() >= int64(maxBatchSize) && len(batchNames) > 0) {
+						batchChan <- batchNames
 						fileSize = 0
-						CloseAndWriteArchive(nil)
+						batchNames = make([]string, 0)
 					}
+					batchNames = append(batchNames, file.Name())
+					fileSize += file.Size()
 				}
 			default:
 				time.Sleep(time.Millisecond)
 			}
 		}
-		if fileCount > 0 {
-			CloseAndWriteArchive(nil)
+		if len(batchNames) > 0 {
+			batchChan <- batchNames
 		}
-		writing = false
+		transferDone = true
 	}()
+	log.Info("listing...")
 
-	List(sourceFs, sourcePath, routines, func(files []pkgfs.FileEntry) {
-		batchChan <- files
+	List(sourceFs, sourcePath, listRoutines, func(fe []pkgfs.FileEntry) {
+		resChan <- fe
 	}, log)
-
-	for writing {
+	listDone = true
+	for !transferDone {
+		time.Sleep(time.Millisecond)
+	}
+	archiveDone = true
+	for !writeDone {
 		time.Sleep(time.Millisecond)
 	}
 }
-
-// func ZipCopyAcrossPages2(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, listRoutines, writeRoutines int, maxBatchCount, maxBatchSize int, log *zap.Logger) {
-// 	var batchFiles []string
-// 	var fileSize uint64
-// 	var archiveBuffer *bytes.Buffer
-// 	var archiveWriter *bufio.Writer
-// 	var zipWriter *zip.Writer
-// 	resChan := make(chan []pkgfs.FileEntry, listRoutines)
-// 	var done, complete bool
-// 	go func() {
-// 		for !done || len(resChan) > 0 {
-// 			select {
-// 			case files := <-resChan:
-// 				sort.Slice(files, func(i, j int) bool {
-// 					return files[i].Name() < files[j].Name()
-// 				})
-
-// 			default:
-// 				time.Sleep(time.Millisecond)
-// 			}
-// 		}
-// 		complete = true
-// 	}()
-// }

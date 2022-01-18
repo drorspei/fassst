@@ -51,7 +51,7 @@ func (o listOptions) run() error {
 		return fmt.Errorf("file system from url: %w", err)
 	}
 	o.log.Info("listing...")
-	resChan := make(chan string, o.maxGoroutines)
+	resChan := make(chan string, o.listingGoroutines)
 	var res []string
 	var done, reading bool
 	reading = true
@@ -68,7 +68,7 @@ func (o listOptions) run() error {
 		reading = false
 	}()
 
-	fst.List(fs, url, o.maxGoroutines, func(input []pkgfs.FileEntry) {
+	fst.List(fs, url, o.listingGoroutines, func(input []pkgfs.FileEntry) {
 		for _, i := range input {
 			resChan <- i.Name()
 		}
@@ -84,6 +84,7 @@ func (o listOptions) run() error {
 	o.log.Info("collecting...")
 
 	if len(o.outputFile) > 0 {
+		o.log.Info("writing output file...", zap.String("path", o.outputFile))
 		if err := os.WriteFile(o.outputFile, []byte(strings.Join(res, "\n")), 0644); err != nil {
 			return fmt.Errorf("write output file: %w", err)
 		}

@@ -9,15 +9,15 @@ import (
 )
 
 type options struct {
-	maxGoroutines int
+	listingGoroutines int
 
 	log     *zap.Logger
 	verbose bool
 }
 
 func (o options) Validate() error {
-	if o.maxGoroutines < 1 {
-		return fmt.Errorf("max_goroutines must be at least 1, was %d", o.maxGoroutines)
+	if o.listingGoroutines < 1 {
+		return fmt.Errorf("listing-goroutines must be at least 1, was %d", o.listingGoroutines)
 	}
 	return nil
 }
@@ -65,11 +65,11 @@ func NewCommand() *cobra.Command {
 		NewZipCopyCommand(&opts),
 	)
 
-	command.PersistentFlags().IntVarP(&opts.maxGoroutines,
-		"max-goroutines",
-		"m",
+	command.PersistentFlags().IntVarP(&opts.listingGoroutines,
+		"listing-goroutines",
+		"l",
 		30,
-		"number of concurrent goroutines",
+		"number of concurrent listing goroutines",
 	)
 
 	command.PersistentFlags().BoolVarP(&opts.verbose,

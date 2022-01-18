@@ -11,10 +11,11 @@
   * `--max-batch-count` - maximum number of files per archive
   * `--max-batch-size` - maximum size of files per archive
   * `--batch-across-pages` - collect results across pages to fill batches
+  * `--archiving-goroutines` - limit concurrency
 * Sync
   * *Not Implemented*
 * Global Options
-  * `--max-goroutines` - limit concurrency
+  * `--listing-goroutines` - limit concurrency
   * `--verbose` - print debug info
 
 # API
