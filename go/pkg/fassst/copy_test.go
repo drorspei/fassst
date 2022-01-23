@@ -22,12 +22,12 @@ func Test_fs_copy(t *testing.T) {
 			targetPath: "mem://foo1/",
 			routines:   10,
 			expectedContents: map[string][]byte{
-				"mem://foo1/0/":  nil,
-				"mem://foo1/0/0": []byte("0"),
-				"mem://foo1/0/1": []byte("1"),
-				"mem://foo1/1/":  nil,
-				"mem://foo1/1/0": []byte("0"),
-				"mem://foo1/1/1": []byte("1"),
+				"/foo1/0/":  nil,
+				"/foo1/0/0": []byte("0"),
+				"/foo1/0/1": []byte("1"),
+				"/foo1/1/":  nil,
+				"/foo1/1/0": []byte("0"),
+				"/foo1/1/1": []byte("1"),
 			},
 		},
 		{
@@ -35,18 +35,18 @@ func Test_fs_copy(t *testing.T) {
 			targetPath: "mem://foo2/",
 			routines:   10,
 			expectedContents: map[string][]byte{
-				"mem://foo2/0/":  nil,
-				"mem://foo2/0/0": []byte("0"),
-				"mem://foo2/0/1": []byte("1"),
-				"mem://foo2/0/2": []byte("2"),
-				"mem://foo2/1/":  nil,
-				"mem://foo2/1/0": []byte("0"),
-				"mem://foo2/1/1": []byte("1"),
-				"mem://foo2/1/2": []byte("2"),
-				"mem://foo2/2/":  nil,
-				"mem://foo2/2/0": []byte("0"),
-				"mem://foo2/2/1": []byte("1"),
-				"mem://foo2/2/2": []byte("2"),
+				"/foo2/0/":  nil,
+				"/foo2/0/0": []byte("0"),
+				"/foo2/0/1": []byte("1"),
+				"/foo2/0/2": []byte("2"),
+				"/foo2/1/":  nil,
+				"/foo2/1/0": []byte("0"),
+				"/foo2/1/1": []byte("1"),
+				"/foo2/1/2": []byte("2"),
+				"/foo2/2/":  nil,
+				"/foo2/2/0": []byte("0"),
+				"/foo2/2/1": []byte("1"),
+				"/foo2/2/2": []byte("2"),
 			},
 		},
 		{
@@ -54,11 +54,11 @@ func Test_fs_copy(t *testing.T) {
 			targetPath: "mem://foo3/",
 			routines:   10,
 			expectedContents: map[string][]byte{
-				"mem://foo3/":  nil,
-				"mem://foo3/0": []byte("0"),
-				"mem://foo3/1": []byte("1"),
-				"mem://foo3/2": []byte("2"),
-				"mem://foo3/3": []byte("3"),
+				"/foo3/":  nil,
+				"/foo3/0": []byte("0"),
+				"/foo3/1": []byte("1"),
+				"/foo3/2": []byte("2"),
+				"/foo3/3": []byte("3"),
 			},
 		},
 	}
@@ -73,7 +73,7 @@ func Test_fs_copy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get target fs: %v", err)
 			}
-			log, _ := zap.NewDevelopment()
+			log, _ := zap.NewProduction()
 			fst.Copy(srcFs, tgtFs, srcUrl, tgtUrl, tt.routines, log)
 
 			actual := tgtFs.(*pkgfs.MemFS).Contents
@@ -84,7 +84,6 @@ func Test_fs_copy(t *testing.T) {
 			}
 			for k, v := range actual {
 				if _, ok := tt.expectedContents[k]; !ok {
-					fmt.Println(actual)
 					t.Fatalf("missing key %s", k)
 				}
 				for i, b := range tt.expectedContents[k] {
@@ -97,23 +96,3 @@ func Test_fs_copy(t *testing.T) {
 		})
 	}
 }
-
-// func Benchmark_fs_copy(b *testing.B) {
-// 	r := 100
-// 	b.Run(fmt.Sprint(r), func(b *testing.B) {
-// 		for i := 0; i < b.N; i++ {
-// 			_, fs, _ := pkgfs.FileSystemByUrl("mock://5:5:10:1000@")
-// 			resChan := make(chan string, 3125)
-// 			wg := fst.List(fs, "/", r, func(input []string, contWG *sync.WaitGroup) {
-// 				for _, i := range input {
-// 					resChan <- i
-// 				}
-// 				contWG.Done()
-// 			})
-// 			wg.Wait()
-// 			if len(resChan) != 3125 {
-// 				b.Fatalf("len results expected=%d, actual=%d", 3125, len(resChan))
-// 			}
-// 		}
-// 	})
-// }

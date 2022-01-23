@@ -2,6 +2,7 @@ package fs
 
 import (
 	"context"
+	"fassst/pkg/utils"
 	"fmt"
 	"os"
 	"strconv"
@@ -74,7 +75,12 @@ func FileSystemByUrl(url string) (string, FileSystem, error) {
 	}
 
 	if strings.HasPrefix(url, "mem://") {
-		return url, &MemFS{make([]string, 0), make(map[string][]byte), &sync.Mutex{}}, nil
+		return MakeSureHasSuffix(url[len("mem://"):], "/"), &MemFS{
+			DirectoryFiles: make(map[string][]SimpleFileEntry),
+			Directories:    utils.NewSet("/"),
+			Contents:       make(map[string][]byte),
+			mutex:          &sync.Mutex{},
+		}, nil
 	}
 
 	return url, LocalFS{}, nil

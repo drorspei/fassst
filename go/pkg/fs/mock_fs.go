@@ -118,16 +118,19 @@ func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, [
 }
 
 func (fs MockKTreeFS) ReadFile(path string) ([]byte, error) {
+	// TODO: correctness?
 	base := pathutil.Base(path)
 	return []byte(base), nil
 }
 
 func (fs MockKTreeFS) WriteFile(path string, content []byte, modTime time.Time) error {
+	// TODO: correctness? not implemented?
 	time.Sleep(time.Microsecond * time.Duration(len(content)))
 	return nil
 }
 
 func (fs MockKTreeFS) Mkdir(path string) error {
+	// TODO: correctness? not implemented?
 	time.Sleep(time.Microsecond)
 	return nil
 }

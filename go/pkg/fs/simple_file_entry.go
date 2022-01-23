@@ -49,7 +49,7 @@ func NewSimpleEntry(path string, isDir bool) SimpleFileEntry {
 		Dir:      isDir,
 		FileMode: fm,
 		Bytes:    size,
-		Modified: time.Now(),
+		Modified: time.Time{},
 		System:   nil,
 	}
 }
