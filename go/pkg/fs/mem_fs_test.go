@@ -1,6 +1,8 @@
 package fs_test
 
 import (
+	"bytes"
+	"io"
 	"testing"
 	"time"
 
@@ -13,10 +15,14 @@ func Test_Mem_Fs_Sanity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("filesystem from url: %v", err)
 	}
-	if err = fs.WriteFile("foo", []byte("foo"), time.Time{}); err != nil {
+	if n, err := fs.WriteFile("foo", bytes.NewBuffer([]byte("foo")), time.Time{}); err != nil || n != 3 {
 		t.Fatalf("write file: %v", err)
 	}
-	bs, err := fs.ReadFile("/foo")
+	f, err := fs.ReadFile("/foo")
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+	bs, err := io.ReadAll(f)
 	if err != nil {
 		t.Fatalf("read file: %v", err)
 	}
@@ -31,13 +37,13 @@ func Test_Mem_Fs_Sanity(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 
-	if err = fs.WriteFile("goo/gaa/boo", []byte("1"), time.Time{}); err != nil {
+	if n, err := fs.WriteFile("goo/gaa/boo", bytes.NewBuffer([]byte("1")), time.Time{}); err != nil || n != 1 {
 		t.Fatalf("write file: %v", err)
 	}
-	if err = fs.WriteFile("goo/zaa/zoo", []byte("2"), time.Time{}); err != nil {
+	if n, err := fs.WriteFile("goo/zaa/zoo", bytes.NewBuffer([]byte("2")), time.Time{}); err != nil || n != 1 {
 		t.Fatalf("write file: %v", err)
 	}
-	if err = fs.WriteFile("goo/zaa/zee", []byte("3"), time.Time{}); err != nil {
+	if n, err := fs.WriteFile("goo/zaa/zee", bytes.NewBuffer([]byte("3")), time.Time{}); err != nil || n != 1 {
 		t.Fatalf("write file: %v", err)
 	}
 
@@ -90,25 +96,37 @@ func Test_Mem_Fs_Sanity(t *testing.T) {
 		t.Fatalf("'/' should have 2 files 'zoo' and 'zee', found: %v", files)
 	}
 
-	bs, err = fs.ReadFile("/goo/gaa/boo")
+	f, err = fs.ReadFile("/goo/gaa/boo")
 	if err != nil {
 		t.Fatalf("read file: %v", err)
+	}
+	bs, err = io.ReadAll(f)
+	if err != nil {
+		t.Fatalf("read file bytes: %v", err)
 	}
 	if string(bs) != "1" {
 		t.Fatalf("wrong content: %s expected %s", string(bs), "1")
 	}
 
-	bs, err = fs.ReadFile("/goo/zaa/zoo")
+	f, err = fs.ReadFile("/goo/zaa/zoo")
 	if err != nil {
 		t.Fatalf("read file: %v", err)
+	}
+	bs, err = io.ReadAll(f)
+	if err != nil {
+		t.Fatalf("read file bytes: %v", err)
 	}
 	if string(bs) != "2" {
 		t.Fatalf("wrong content: %s expected %s", string(bs), "2")
 	}
 
-	bs, err = fs.ReadFile("/goo/zaa/zee")
+	f, err = fs.ReadFile("/goo/zaa/zee")
 	if err != nil {
 		t.Fatalf("read file: %v", err)
+	}
+	bs, err = io.ReadAll(f)
+	if err != nil {
+		t.Fatalf("read file bytes: %v", err)
 	}
 	if string(bs) != "3" {
 		t.Fatalf("wrong content: %s expected %s", string(bs), "3")

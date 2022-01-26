@@ -86,6 +86,9 @@ func Test_fs_copy(t *testing.T) {
 				if _, ok := tt.expectedContents[k]; !ok {
 					t.Fatalf("missing key %s", k)
 				}
+				if len(tt.expectedContents[k]) != len(v) {
+					t.Fatalf("number of results in %s, expected: %d, actual %d", k, len(tt.expectedContents[k]), len(v))
+				}
 				for i, b := range tt.expectedContents[k] {
 					if v[i] != b {
 						t.Fatalf("data not equal expected:\"%s\" actual:\"%s\"", tt.expectedContents[k], v)

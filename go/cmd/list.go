@@ -85,7 +85,7 @@ func (o listOptions) run() error {
 
 	if len(o.outputFile) > 0 {
 		o.log.Info("writing output file...", zap.String("path", o.outputFile))
-		if err := os.WriteFile(o.outputFile, []byte(strings.Join(res, "\n")), 0644); err != nil {
+		if err := os.WriteFile(o.outputFile, []byte(strings.Join(res, "\n")), 0755); err != nil {
 			return fmt.Errorf("write output file: %w", err)
 		}
 	} else {

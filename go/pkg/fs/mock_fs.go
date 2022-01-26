@@ -1,7 +1,9 @@
 package fs
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	pathutil "path"
 	"strconv"
 	"strings"
@@ -24,6 +26,18 @@ type MockKTreeFS struct {
 type MockKTreePagination struct {
 	Depth uint64
 	Start uint64
+}
+
+type MockOpenFile struct {
+	Contents *bytes.Buffer
+}
+
+func (f MockOpenFile) Read(p []byte) (n int, err error) {
+	return f.Contents.Read(p)
+}
+
+func (f MockOpenFile) Close() error {
+	return nil
 }
 
 func (fs *MockKTreeFS) AddRecentMockCall(time time.Time) bool {
@@ -117,16 +131,29 @@ func (fs *MockKTreeFS) ReadDir(url string, pagination Pagination) ([]DirEntry, [
 	return dirs, files, nil, nil
 }
 
-func (fs MockKTreeFS) ReadFile(path string) ([]byte, error) {
+func (fs MockKTreeFS) ReadFile(path string) (io.ReadCloser, error) {
 	// TODO: correctness?
 	base := pathutil.Base(path)
-	return []byte(base), nil
+	return MockOpenFile{bytes.NewBuffer([]byte(base))}, nil
+	// return &MockOpenFile{[]byte(base)}, nil
 }
 
-func (fs MockKTreeFS) WriteFile(path string, content []byte, modTime time.Time) error {
+func (fs MockKTreeFS) WriteFile(path string, content io.Reader, modTime time.Time) (int, error) {
 	// TODO: correctness? not implemented?
-	time.Sleep(time.Microsecond * time.Duration(len(content)))
-	return nil
+	// time.Sleep(time.Microsecond * time.Duration(len(content)))
+	n := 0
+	for {
+		buf := make([]byte, 64*1024*1024)
+		m, err := content.Read(buf)
+		n += m
+		if err != nil {
+			return n, fmt.Errorf("reading file: %w", err)
+		}
+		if n == 0 {
+			break
+		}
+	}
+	return n, nil
 }
 
 func (fs MockKTreeFS) Mkdir(path string) error {

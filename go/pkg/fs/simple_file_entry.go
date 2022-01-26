@@ -37,7 +37,7 @@ func (f SimpleFileEntry) Sys() interface{} {
 func NewSimpleEntry(path string, isDir bool) SimpleFileEntry {
 	var fm fs.FileMode
 	var size int64
-	fm = 0644
+	fm = 0755
 	if isDir {
 		fm = fm | fs.ModeDir
 	} else {
@@ -56,7 +56,7 @@ func NewSimpleEntry(path string, isDir bool) SimpleFileEntry {
 
 func NewSimpleEntryTimeSize(path string, isDir bool, size int64, modTime time.Time) SimpleFileEntry {
 	var fm fs.FileMode
-	fm = 0644
+	fm = 0755
 	if isDir {
 		fm = fm | fs.ModeDir
 	}

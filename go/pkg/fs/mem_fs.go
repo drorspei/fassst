@@ -1,6 +1,8 @@
 package fs
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -17,6 +19,31 @@ type MemFS struct {
 	Contents       map[string][]byte
 
 	mutex *sync.Mutex
+}
+
+type MemFile struct {
+	Buf []byte
+	Pos int
+}
+
+func (f *MemFile) Read(p []byte) (n int, err error) {
+	k := len(f.Buf) - f.Pos
+	if k == 0 {
+		return 0, io.EOF
+	}
+	if len(p) < k {
+		k = len(p)
+	}
+	for i := 0; i < k; i++ {
+		p[i] = f.Buf[f.Pos+i]
+	}
+	f.Pos += k
+
+	return k, nil
+}
+
+func (f *MemFile) Close() error {
+	return nil
 }
 
 func (fs MemFS) ReadDir(dirpath string, pagination Pagination) ([]DirEntry, []FileEntry, Pagination, error) {
@@ -41,7 +68,7 @@ func (fs MemFS) ReadDir(dirpath string, pagination Pagination) ([]DirEntry, []Fi
 	return dirs, files, nil, nil
 }
 
-func (fs MemFS) ReadFile(path string) ([]byte, error) {
+func (fs MemFS) ReadFile(path string) (io.ReadCloser, error) {
 	fs.mutex.Lock()
 	defer func() { fs.mutex.Unlock() }()
 
@@ -51,11 +78,16 @@ func (fs MemFS) ReadFile(path string) ([]byte, error) {
 		if bs == nil {
 			return nil, &os.PathError{Op: "open", Path: path, Err: syscall.EISDIR}
 		}
-		return bs, nil
+		return &MemFile{bs, 0}, nil
 	}
 }
 
-func (fs *MemFS) WriteFile(filepath string, content []byte, modTime time.Time) error {
+func (fs *MemFS) WriteFile(filepath string, content io.Reader, modTime time.Time) (int, error) {
+	buf, err := io.ReadAll(content)
+	if err != nil {
+		return 0, fmt.Errorf("read all: %w", err)
+	}
+
 	fs.mutex.Lock()
 	defer func() { fs.mutex.Unlock() }()
 	if !strings.HasPrefix(filepath, "/") {
@@ -67,12 +99,12 @@ func (fs *MemFS) WriteFile(filepath string, content []byte, modTime time.Time) e
 	}
 	dir = MakeSureHasSuffix(dir, "/")
 	if _, ok := fs.Directories[dir]; !ok {
-		return &os.PathError{Op: "write", Path: filepath, Err: syscall.ENOENT}
+		return 0, &os.PathError{Op: "write", Path: filepath, Err: syscall.ENOENT}
 
 	}
-	fs.DirectoryFiles[dir] = append(fs.DirectoryFiles[dir], NewSimpleEntryTimeSize(filepath, false, int64(len(content)), time.Time{}))
-	fs.Contents[filepath] = content
-	return nil
+	fs.DirectoryFiles[dir] = append(fs.DirectoryFiles[dir], NewSimpleEntryTimeSize(filepath, false, int64(len(buf)), time.Time{}))
+	fs.Contents[filepath] = buf
+	return len(buf), nil
 }
 
 func (fs *MemFS) Mkdir(dirpath string) error {

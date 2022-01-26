@@ -4,6 +4,7 @@ import (
 	"context"
 	"fassst/pkg/utils"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -37,14 +38,14 @@ type Pagination interface{}
 
 type FileSystem interface {
 	ReadDir(string, Pagination) ([]DirEntry, []FileEntry, Pagination, error)
-	ReadFile(path string) ([]byte, error)
-	WriteFile(path string, content []byte, modTime time.Time) error
+	ReadFile(path string) (io.ReadCloser, error)
+	WriteFile(path string, content io.Reader, modTime time.Time) (int, error)
 	Mkdir(path string) error
 }
 
 func FileSystemByUrl(url string) (string, FileSystem, error) {
 	if strings.HasPrefix(url, "s3://") {
-		fs, err := NewS3FS(context.Background())
+		fs, err := NewS3FS(url, context.Background())
 		return url[len("s3://"):], fs, err
 	}
 

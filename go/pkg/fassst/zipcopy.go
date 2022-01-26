@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"path"
 	"sort"
 	"strings"
@@ -68,7 +69,7 @@ func genArchiveCloser(targetFs pkgfs.FileSystem, targetPath string, archiveBuffe
 			return
 		}
 		log.Info("writing archive", zap.String("path", archivePath))
-		if err := targetFs.WriteFile(archivePath, archiveBuffer.Bytes(), time.Now()); err != nil {
+		if _, err := targetFs.WriteFile(archivePath, archiveBuffer, time.Now()); err != nil {
 			log.Error("write archive file", zap.Error(err))
 			return
 		}
@@ -77,6 +78,8 @@ func genArchiveCloser(targetFs pkgfs.FileSystem, targetPath string, archiveBuffe
 
 func ZipCopyPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, routines int, maxBatchCount, maxBatchSize int, log *zap.Logger) {
 	List(sourceFs, sourcePath, routines, func(files []pkgfs.FileEntry) {
+		buf := make([]byte, 64*1024*1024)
+
 		var batchNames []string
 		var fileSize uint64
 		var archiveBuffer *bytes.Buffer
@@ -108,7 +111,7 @@ func ZipCopyPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath st
 				panic(fmt.Errorf("read file: %w", err))
 			}
 
-			sz, err := fw.Write(content)
+			sz, err := io.CopyBuffer(fw, content, buf)
 			if err != nil {
 				panic(fmt.Errorf("write content to file: %w", err))
 			}
@@ -127,6 +130,8 @@ func ZipCopyPages(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath st
 }
 
 func writeBatch(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, names []string, runChan chan utils.Unit, runWG *sync.WaitGroup, log *zap.Logger) {
+	buf := make([]byte, 64*1024*1024)
+
 	runChan <- utils.U
 	defer func() {
 		<-runChan
@@ -152,7 +157,7 @@ func writeBatch(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath stri
 			continue
 		}
 
-		_, err = fw.Write(content)
+		_, err = io.CopyBuffer(fw, content, buf)
 		if err != nil {
 			log.Error("write content to file", zap.Error(err))
 			continue

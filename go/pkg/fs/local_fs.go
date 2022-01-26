@@ -2,6 +2,7 @@ package fs
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
 )
@@ -29,20 +30,31 @@ func (fs LocalFS) ReadDir(key string, pagination Pagination) ([]DirEntry, []File
 	return dirs, files, nil, nil
 }
 
-func (fs LocalFS) ReadFile(path string) ([]byte, error) {
-	return os.ReadFile(path)
+func (fs LocalFS) ReadFile(path string) (io.ReadCloser, error) {
+	return os.Open(path)
 }
 
-func (fs LocalFS) WriteFile(path string, content []byte, modTime time.Time) error {
-	if err := os.WriteFile(path, content, 0644); err != nil {
-		return fmt.Errorf("write file: %w", err)
+func (fs LocalFS) WriteFile(path string, content io.Reader, modTime time.Time) (int, error) {
+	buf := make([]byte, 64*1024*1024)
+
+	f, err := os.Create(path)
+
+	if err != nil {
+		return 0, fmt.Errorf("write file: %w", err)
 	}
+
+	n, err := io.CopyBuffer(f, content, buf)
+	if err != nil {
+		return int(n), fmt.Errorf("copy file: %w", err)
+	}
+
 	if err := os.Chtimes(path, time.Now(), modTime); err != nil {
-		return fmt.Errorf("update time: %w", err)
+		return int(n), fmt.Errorf("update time: %w", err)
 	}
-	return nil
+
+	return int(n), nil
 }
 
 func (fs LocalFS) Mkdir(path string) error {
-	return os.MkdirAll(path, 0644)
+	return os.MkdirAll(path, 0755)
 }

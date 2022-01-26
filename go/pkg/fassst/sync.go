@@ -28,8 +28,8 @@ func Sync(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, ro
 			log.Debug("make target dir", zap.String("dir", pathDir))
 			targetFs.Mkdir(pathDir)
 			log.Debug("write target file", zap.String("filename", outputFilename))
-			targetFs.WriteFile(outputFilename, content, file.ModTime())
-			log.Debug("wrote target file", zap.String("filename", outputFilename), zap.Int("size", len(content)))
+			n, err := targetFs.WriteFile(outputFilename, content, file.ModTime())
+			log.Debug("wrote target file", zap.String("filename", outputFilename), zap.Int("size", n))
 		}
 		log.Debug("list page done")
 	}, log)

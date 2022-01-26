@@ -26,8 +26,9 @@ func Copy(sourceFs, targetFs pkgfs.FileSystem, sourcePath, targetPath string, ro
 			log.Debug("make target dir", zap.String("dir", pathDir))
 			targetFs.Mkdir(pathDir)
 			log.Debug("write target file", zap.String("filename", outputFilename))
-			targetFs.WriteFile(outputFilename, content, file.ModTime())
-			log.Debug("wrote target file", zap.String("filename", outputFilename), zap.Int("size", len(content)))
+
+			bytes, err := targetFs.WriteFile(outputFilename, content, file.ModTime())
+			log.Debug("wrote target file", zap.String("filename", outputFilename), zap.Int("size", bytes))
 		}
 		log.Debug("list page done")
 	}, log)
