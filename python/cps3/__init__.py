@@ -1,5 +1,5 @@
-from fassst.cpsish import dask_cpsish
-from fassst.main import dolist
+from cps3.cpsish import dask_cpsish
+from cps3.main import dolist
 
 
 def list(path, name_field="Key", protocol="s3", fsspec_kwargs=None, cps_backend="dask", inactivity_timeout=900):

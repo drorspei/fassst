@@ -178,7 +178,7 @@ def get_backend_func(args):
         def inner(func, *args_, **kwargs):
             import json
             from dask.distributed import Client, LocalCluster
-            from cpsish import dask_cpsish
+            from cps3.cpsish import dask_cpsish
             print("starting localcluster")
             with LocalCluster(**json.loads(args.cps_backend_kwargs)) as cluster:
                 print("starting client...")
