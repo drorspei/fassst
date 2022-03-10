@@ -3,7 +3,14 @@ import traceback
 from queue import Empty
 
 
+class DontCatchExceptions(Exception):
+    pass
+
+
 def cpsish(func, *args, queue_gen, schedule, inactivity_timeout=300, event_gen=None, catch_exception=Exception, **kwargs):
+    if catch_exception is None:
+        catch_exception = DontCatchExceptions
+
     timeouts = [Empty]
     try:
         from distributed import TimeoutError

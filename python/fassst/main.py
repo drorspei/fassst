@@ -263,6 +263,8 @@ def main(argv=None):
         import sys
         argv = sys.argv[1:]
     args = parser().parse_args(argv)
+    if "func" not in vars(args):
+        raise ValueError("choose between list, zipcopy")
     printitems(get_backend_func(args)(args.func, **args.prepare_arguments(args)))
 
 
