@@ -6,6 +6,8 @@ import fsspec
 import datetime
 import zipfile
 
+import cps3.morefs
+
 
 def dolist(
     path,
