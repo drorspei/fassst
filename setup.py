@@ -4,7 +4,7 @@ from setuptools import setup
 if __name__ == "__main__":
     setup(
         name="cps3",
-        version="1.0.1",
+        version="1.0.2",
         description="Fast list/copy for s3 and in general",
         long_description=open("README.md").read(),
         author="Dror Speiser",
